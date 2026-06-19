@@ -601,6 +601,69 @@
   }
   .detect-summary strong{font-size:18px;font-weight:700;}
 
+  /* ----- "Type Your COR Table" manual entry modal ----- */
+  .type-cor-rows{display:flex;flex-direction:column;gap:12px;margin-top:14px;max-height:50vh;overflow-y:auto;padding-right:4px;}
+  .type-cor-row{
+    display:grid;grid-template-columns:1fr 1fr auto;gap:10px 14px;
+    padding:14px;border-radius:12px;
+    background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);
+    position:relative;
+  }
+  @media (max-width:640px){
+    .type-cor-row{grid-template-columns:1fr auto;gap:8px 10px;padding:12px;}
+  }
+  .type-cor-row .tcr-field{display:flex;flex-direction:column;gap:4px;min-width:0;}
+  .type-cor-row .tcr-label{
+    font-family:var(--font-display);font-size:9px;letter-spacing:1.5px;
+    color:var(--text-3);text-transform:uppercase;
+  }
+  .type-cor-row select,
+  .type-cor-row input[type="date"]{
+    width:100%;padding:8px 10px;border-radius:8px;
+    background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);
+    color:var(--text-1);font-size:13px;font-family:inherit;
+  }
+  .type-cor-row select:focus,
+  .type-cor-row input[type="date"]:focus{
+    outline:none;border-color:var(--accent-cyan);
+    box-shadow:0 0 0 2px rgba(125,249,255,0.15);
+  }
+  /* Right column: remove button */
+  .type-cor-row .tcr-remove{
+    grid-row:1 / -1;grid-column:-1 / -2;
+    align-self:start;width:32px;height:32px;border-radius:8px;
+    background:rgba(255,122,150,0.1);border:1px solid rgba(255,122,150,0.3);
+    color:#ff7a96;cursor:pointer;font-size:16px;
+    display:grid;place-items:center;transition:all 0.18s ease;
+  }
+  .type-cor-row .tcr-remove:hover{background:rgba(255,122,150,0.22);}
+  /* Auto-filled info panel — read-only details derived from the picked Form Type */
+  .type-cor-row .tcr-derived{
+    grid-column:1 / -1;
+    padding:8px 10px;border-radius:8px;
+    background:rgba(125,249,255,0.06);border:1px solid rgba(125,249,255,0.18);
+    font-size:11px;color:var(--text-2);line-height:1.45;
+  }
+  .type-cor-row .tcr-derived.empty{
+    background:rgba(255,255,255,0.02);border-color:rgba(255,255,255,0.06);color:var(--text-3);
+    font-style:italic;
+  }
+  .type-cor-row .tcr-derived strong{color:var(--accent-cyan);font-weight:600;}
+  .type-cor-row .tcr-derived .freq-pill{
+    display:inline-block;margin-left:6px;padding:1px 8px;border-radius:4px;
+    font-family:var(--font-display);font-size:9px;letter-spacing:1px;
+  }
+  .type-cor-row .tcr-derived .freq-pill.QUARTERLY{background:rgba(125,249,255,0.18);color:var(--accent-cyan);}
+  .type-cor-row .tcr-derived .freq-pill.MONTHLY  {background:rgba(255,122,217,0.18);color:var(--accent-pink);}
+  .type-cor-row .tcr-derived .freq-pill.ANNUALLY {background:rgba(179,136,255,0.18);color:var(--accent-violet);}
+
+  .type-cor-add{
+    margin-top:10px;width:100%;justify-content:center;
+    border-style:dashed !important;background:transparent !important;
+    color:var(--accent-cyan) !important;
+  }
+  .type-cor-add:hover{background:rgba(125,249,255,0.08) !important;}
+
   /* ----- Records Modal (consolidated payments) ----- */
   .modal.modal-xl{max-width:1200px;width:96%;max-height:92vh;display:flex;flex-direction:column;}
   .records-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
@@ -1084,7 +1147,8 @@
         Scan Your BIR Certificate
       </label>
       <input type="file" id="corScanInput" accept="image/*" hidden/>
-      <button type="button" class="btn" id="manualWelcomeBtn">📝 Pick Forms Manually Instead</button>
+      <button type="button" class="btn" id="typeCorWelcomeBtn">⌨ Type Your COR Table (Most Reliable)</button>
+      <button type="button" class="btn" id="manualWelcomeBtn">📝 Quick Pick — Just Tick Form Codes</button>
       <button type="button" class="btn" id="skipWelcomeBtn">Skip — I'll add deadlines later</button>
     </div>
     <div class="welcome-note">📷 Works with photos OR screenshots · Auto-rotates sideways photos</div>
@@ -1116,6 +1180,38 @@
     <div class="modal-actions">
       <button type="button" class="btn" data-close="corReviewModal">Cancel</button>
       <button type="button" class="btn primary" id="corGenerateBtn">Generate Deadlines</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== TYPE COR TABLE MANUALLY (TEXT-ENTRY ALTERNATIVE TO SCANNING) ====== -->
+<!-- For users whose photos can't be reliably read by the OCR. They look at the
+     physical/scanned COR, pick the Form Type from a dropdown per row (which
+     auto-fills tax type, frequency, and due-rule from BIR_FORM_RULES), and
+     type the Filing Start Date. Repeats per cert row. ──────────────────── -->
+<div class="modal-backdrop" id="typeCorModal">
+  <div class="modal modal-wide">
+    <button class="close-x" data-close="typeCorModal">✕</button>
+    <div class="modal-title">⌨ Type Your COR Table</div>
+    <div class="modal-sub">Add one row per line from your Certificate of Registration. Pick the Form Type — the rest auto-fills.</div>
+
+    <div class="form-detect-header">
+      <div style="color:var(--text-2);font-size:12px;">📋 Look at your COR table and add the rows below.</div>
+      <div class="form-detect-year">
+        <label>Year for deadlines</label>
+        <select id="typeCorYearSelect"></select>
+      </div>
+    </div>
+
+    <!-- Container for the dynamically-added cert rows -->
+    <div class="type-cor-rows" id="typeCorRows"></div>
+
+    <button type="button" class="btn type-cor-add" id="typeCorAddBtn">＋ Add another row from your COR</button>
+
+    <div class="detect-summary" id="typeCorSummary">Will create <strong>0</strong> deadlines</div>
+    <div class="modal-actions">
+      <button type="button" class="btn" data-close="typeCorModal">Cancel</button>
+      <button type="button" class="btn primary" id="typeCorGenerateBtn">Generate Deadlines</button>
     </div>
   </div>
 </div>
@@ -2230,6 +2326,18 @@ document.getElementById('manualWelcomeBtn').addEventListener('click', ()=>{
   openManualPicker();
 });
 
+// Type-COR-table button in the welcome screen — the most-reliable path when
+// scanning doesn't work for a particular cert photo. Opens a typed-entry table.
+document.getElementById('typeCorWelcomeBtn').addEventListener('click', ()=>{
+  openTypeCorModal();
+});
+document.getElementById('typeCorAddBtn').addEventListener('click', ()=>{
+  addTypeCorRow();
+});
+document.getElementById('typeCorGenerateBtn').addEventListener('click', ()=>{
+  generateFromTypedCor();
+});
+
 // COR scan input — fires when user picks a file/photo
 document.getElementById('corScanInput').addEventListener('change', async (e)=>{
   const file = e.target.files[0];
@@ -2750,6 +2858,206 @@ function openManualPicker(){
   if(sub) sub.textContent = 'Pick the BIR forms shown in your Certificate of Registration';
   renderCorReview();
   openModal('corReviewModal');
+}
+
+/* =====================================================================
+   TYPE COR TABLE MANUALLY
+   ─────────────────────────────────────────────────────────────────────
+   Text-entry alternative for when the OCR can't read a particular cert
+   photo (heavy security watermark, low contrast, etc.). User adds one
+   row per line from their COR; for each row they pick the Form Type and
+   enter the Filing Start Date. Tax type, frequency, and due-date rule
+   are derived from the Form Type (via BIR_FORM_RULES). At the bottom
+   they pick a year and click Generate — deadlines are created just like
+   from a successful scan.
+   ===================================================================== */
+
+const typeCorState = {
+  rows: [],   // each row: {id, formCode, startDate}
+  year: new Date().getFullYear(),
+};
+
+function openTypeCorModal(){
+  closeModal('welcomeModal');
+  closeModal('corReviewModal');
+  // Reset state and start with one empty row so the user sees the shape immediately
+  typeCorState.rows = [];
+  typeCorState.year = new Date().getFullYear();
+
+  // Populate year selector (current year + next 2)
+  const ySel = document.getElementById('typeCorYearSelect');
+  const cy = new Date().getFullYear();
+  ySel.innerHTML = [cy, cy+1, cy+2].map(y =>
+    `<option value="${y}" ${y===typeCorState.year?'selected':''}>${y}</option>`
+  ).join('');
+  ySel.onchange = (e) => { typeCorState.year = parseInt(e.target.value,10); renderTypeCorSummary(); };
+
+  // Clear and add one starter row
+  document.getElementById('typeCorRows').innerHTML = '';
+  addTypeCorRow();
+
+  openModal('typeCorModal');
+}
+
+function addTypeCorRow(initial){
+  const rowState = {
+    id: uid(),
+    formCode: (initial && initial.formCode) || '',
+    startDate: (initial && initial.startDate) || toDateInput(new Date()),
+  };
+  typeCorState.rows.push(rowState);
+
+  const container = document.getElementById('typeCorRows');
+  const row = document.createElement('div');
+  row.className = 'type-cor-row';
+  row.dataset.rowId = rowState.id;
+
+  // Build Form Type dropdown options from BIR_FORM_RULES
+  const formOptions = [
+    '<option value="">— Pick from your COR —</option>',
+    ...Object.entries(BIR_FORM_RULES).map(([code, rule]) =>
+      `<option value="${code}" ${code===rowState.formCode?'selected':''}>${code} — ${rule.name}</option>`
+    )
+  ].join('');
+
+  row.innerHTML = `
+    <div class="tcr-field">
+      <label class="tcr-label">Form Type</label>
+      <select class="tcr-form-select">${formOptions}</select>
+    </div>
+    <div class="tcr-field">
+      <label class="tcr-label">Filing Start Date</label>
+      <input type="date" class="tcr-start-date" value="${rowState.startDate}"/>
+    </div>
+    <button type="button" class="tcr-remove" title="Remove this row">✕</button>
+    <div class="tcr-derived empty">Pick a Form Type above — Tax Type, Frequency, and Due Date Rule will fill in automatically.</div>
+  `;
+
+  // Wire change handlers
+  row.querySelector('.tcr-form-select').addEventListener('change', (e) => {
+    rowState.formCode = e.target.value;
+    updateTypeCorRowDerived(row, rowState);
+    renderTypeCorSummary();
+  });
+  row.querySelector('.tcr-start-date').addEventListener('change', (e) => {
+    rowState.startDate = e.target.value;
+  });
+  row.querySelector('.tcr-remove').addEventListener('click', () => {
+    removeTypeCorRow(rowState.id);
+  });
+
+  container.appendChild(row);
+  updateTypeCorRowDerived(row, rowState);
+  renderTypeCorSummary();
+}
+
+function removeTypeCorRow(id){
+  typeCorState.rows = typeCorState.rows.filter(r => r.id !== id);
+  const row = document.querySelector(`.type-cor-row[data-row-id="${id}"]`);
+  if(row) row.remove();
+  // If they removed the last row, add a fresh empty one so the modal isn't blank
+  if(typeCorState.rows.length === 0) addTypeCorRow();
+  renderTypeCorSummary();
+}
+
+// Auto-fill the read-only details (tax type, frequency, due-date rule) for a row
+// when the user picks a Form Type. Uses BIR_FORM_RULES as source of truth.
+function updateTypeCorRowDerived(rowEl, rowState){
+  const derived = rowEl.querySelector('.tcr-derived');
+  if(!rowState.formCode){
+    derived.classList.add('empty');
+    derived.innerHTML = 'Pick a Form Type above — Tax Type, Frequency, and Due Date Rule will fill in automatically.';
+    return;
+  }
+  const rule = BIR_FORM_RULES[rowState.formCode];
+  if(!rule){
+    derived.classList.add('empty');
+    derived.innerHTML = 'Unknown form code.';
+    return;
+  }
+  // Infer tax-type name from the form code prefix (BIR convention)
+  const taxTypeByPrefix = {
+    '17':'Individual Income Tax',
+    '25':'Percentage Tax',
+    '06':'Withholding Tax — Expanded/Others',
+    '16':'Withholding Tax — Expanded/Others',
+  };
+  const taxTypeName = taxTypeByPrefix[rowState.formCode.slice(0,2)] || 'Tax';
+  derived.classList.remove('empty');
+  derived.innerHTML = `
+    <strong>Tax Type:</strong> ${taxTypeName}
+    <span class="freq-pill ${rule.frequency}">${rule.frequency}</span>
+    <br/>
+    <strong>Due Rule:</strong> ${rule.rule}
+  `;
+}
+
+// Live count of how many deadlines will be generated based on filled rows
+function renderTypeCorSummary(){
+  const summary = document.getElementById('typeCorSummary');
+  let totalDeadlines = 0;
+  for(const r of typeCorState.rows){
+    if(!r.formCode) continue;
+    const rule = BIR_FORM_RULES[r.formCode];
+    if(!rule) continue;
+    totalDeadlines += rule.generate(typeCorState.year).length;
+  }
+  summary.innerHTML = `Will create <strong>${totalDeadlines}</strong> deadline${totalDeadlines===1?'':'s'} for <strong>${typeCorState.year}</strong>`;
+}
+
+// Take the typed rows and create deadlines, using the same dedup/insert path
+// as the scan flow so we don't duplicate work and behavior stays consistent.
+function generateFromTypedCor(){
+  const filledRows = typeCorState.rows.filter(r => r.formCode && BIR_FORM_RULES[r.formCode]);
+  if(filledRows.length === 0){
+    toast('Add at least one row with a Form Type picked.');
+    return;
+  }
+  const existingTitles = new Set(state.deadlines.map(d => d.title));
+  let added = 0;
+  for(const r of filledRows){
+    const rule = BIR_FORM_RULES[r.formCode];
+    const deadlines = rule.generate(typeCorState.year);
+    // Honor the filing start date: skip any generated deadline that falls
+    // before the user's filing start (e.g., don't create Q1 May 15 if their
+    // filing started October 29 of that year — they weren't registered yet).
+    const startCutoff = r.startDate ? new Date(r.startDate + 'T00:00:00') : null;
+    deadlines.forEach(dl => {
+      if(startCutoff && dl.due < startCutoff) return; // skip pre-registration deadlines
+      const title = `BIR ${r.formCode} — ${dl.label} ${typeCorState.year} (${rule.name})`;
+      if(existingTitles.has(title)) return;
+      state.deadlines.push({
+        id: uid(),
+        title,
+        desc: rule.rule,
+        due: dl.due.toISOString(),
+        completed: false,
+        reminded: false,
+        _formCode: r.formCode,
+      });
+      existingTitles.add(title);
+      added++;
+    });
+  }
+  closeModal('typeCorModal');
+  markOnboarded();
+  refresh();
+  // Jump calendar to the earliest upcoming new deadline
+  if(added > 0){
+    const upcoming = state.deadlines
+      .filter(d => !d.completed)
+      .map(d => new Date(d.due))
+      .filter(d => d >= new Date())
+      .sort((a,b)=>a-b)[0];
+    if(upcoming){
+      state.currentMonth = upcoming.getMonth();
+      state.currentYear = upcoming.getFullYear();
+      renderCalendar();
+    }
+    toast(`✓ Added ${added} deadline${added===1?'':'s'} for ${typeCorState.year}`);
+  } else {
+    toast('All deadlines were already in your calendar.');
+  }
 }
 
 function renderCorReview(){
