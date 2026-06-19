@@ -671,6 +671,12 @@
     background:rgba(125,249,255,0.12);color:var(--accent-cyan);
     font-family:var(--font-display);font-size:10px;letter-spacing:0.5px;
   }
+  /* Cross-row BIR-rule note (e.g. "0619E skips March/Jun/Sep/Dec because 1601EQ is registered") */
+  .type-cor-row .tcr-preview-note{
+    margin-top:8px;padding:6px 10px;border-radius:6px;
+    background:rgba(179,136,255,0.10);border:1px solid rgba(179,136,255,0.30);
+    color:var(--accent-violet);font-size:11px;line-height:1.4;font-style:italic;
+  }
 
   .type-cor-add{
     margin-top:10px;width:100%;justify-content:center;
@@ -2971,6 +2977,9 @@ function addTypeCorRow(){
   formInp.addEventListener('input', (e) => {
     rowState.formCode = e.target.value.toUpperCase().trim();
     e.target.value = rowState.formCode;
+    // Cross-row rules (e.g. 0619E ↔ 1601EQ) depend on what ALL rows have, so
+    // changing one row's form code may flip another row's preview.
+    refreshAllTypeCorPreviews();
   });
   row.querySelector('.tcr-start-date').addEventListener('change',
     (e) => { rowState.startDate = e.target.value; });
@@ -3000,9 +3009,47 @@ function removeTypeCorRow(id){
   renderTypeCorSummary();
 }
 
+// Cross-row BIR rule adjustment. Some form pairs cover the same Tax Type at
+// different cadences, where filing the quarterly form supersedes the monthly
+// form for that quarter's last month. Currently handles:
+//
+//   0619E (monthly Expanded Withholding) ↔ 1601EQ (quarterly Expanded)
+//     If BOTH are on the COR, 0619E is only filed for months 1 and 2 of each
+//     quarter — months 3, 6, 9, 12 (March/June/September/December withholding)
+//     are rolled into the quarterly 1601EQ. So we drop those four months
+//     from the 0619E schedule.
+//
+// Returns this row's parsed deadlines with any cross-row adjustments applied.
+// Also indicates whether an adjustment was applied (for UI display).
+function getAdjustedDeadlinesForRow(rowState){
+  let deadlines = parseDueDateText(rowState.dueText, rowState.frequency, typeCorState.year);
+  let usedFallback = false;
+  // Fallback: parser couldn't read it but the user typed a known form code
+  if(deadlines.length === 0 && rowState.formCode && BIR_FORM_RULES[rowState.formCode]){
+    deadlines = BIR_FORM_RULES[rowState.formCode].generate(typeCorState.year);
+    usedFallback = true;
+  }
+
+  let adjustmentApplied = null;
+  // Rule: 0619E is skipped for months 3, 6, 9, 12 if 1601EQ is also registered
+  if(rowState.formCode === '0619E'){
+    const hasQuarterlyExp = typeCorState.rows.some(r => r.formCode === '1601EQ');
+    if(hasQuarterlyExp){
+      const skip = new Set(['March','June','September','December']);
+      const before = deadlines.length;
+      deadlines = deadlines.filter(d => !skip.has(d.label));
+      if(deadlines.length !== before){
+        adjustmentApplied = '0619E_skips_for_1601EQ';
+      }
+    }
+  }
+
+  return { deadlines, usedFallback, adjustmentApplied };
+}
+
 // Live preview: parse the row's typed due-date rule into actual dates and show
 // them as date badges. Shows an error message when the parser can't make sense
-// of the text so the user can adjust their wording.
+// of the text, and a violet note when a cross-row adjustment was applied.
 function updateTypeCorRowPreview(rowEl, rowState){
   const prev = rowEl.querySelector('.tcr-preview');
   if(!rowState.dueText || !rowState.dueText.trim()){
@@ -3010,32 +3057,49 @@ function updateTypeCorRowPreview(rowEl, rowState){
     prev.textContent = '⏳ Type the Filing Due Date rule above to see parsed deadlines.';
     return;
   }
-  const parsed = parseDueDateText(rowState.dueText, rowState.frequency, typeCorState.year);
-  if(parsed.length === 0){
+  const {deadlines, adjustmentApplied} = getAdjustedDeadlinesForRow(rowState);
+  if(deadlines.length === 0){
     prev.className = 'tcr-preview error';
     prev.innerHTML = '⚠ Could not parse this due date rule. Make sure Filing Frequency is set, and that the rule uses phrases like "on or before", "within N days after", or "last day of the month following".';
     return;
   }
-  const badges = parsed.map(d =>
+  const badges = deadlines.map(d =>
     `<span class="tcr-preview-date">${d.label}: ${formatDueDate(d.due)}</span>`
   ).join('');
+
+  // Note shown when 0619E months were dropped because 1601EQ is also registered
+  let note = '';
+  if(adjustmentApplied === '0619E_skips_for_1601EQ'){
+    note = '<div class="tcr-preview-note">💡 March, June, September, December skipped — those months are reported via the quarterly 1601EQ instead (BIR rule for taxpayers registered for both).</div>';
+  }
+
   prev.className = 'tcr-preview';
-  prev.innerHTML = `<strong>✓ Parsed ${parsed.length} deadline${parsed.length===1?'':'s'}</strong>` +
-                   `<div class="tcr-preview-dates">${badges}</div>`;
+  prev.innerHTML = `<strong>✓ Parsed ${deadlines.length} deadline${deadlines.length===1?'':'s'}</strong>` +
+                   `<div class="tcr-preview-dates">${badges}</div>${note}`;
+}
+
+// Re-render every row's preview. Used when ANY row changes its form code,
+// because cross-row adjustments (e.g. 0619E ↔ 1601EQ) depend on the full set.
+function refreshAllTypeCorPreviews(){
+  document.querySelectorAll('.type-cor-row').forEach(rowEl => {
+    const rs = typeCorState.rows.find(r => r.id === rowEl.dataset.rowId);
+    if(rs) updateTypeCorRowPreview(rowEl, rs);
+  });
+  renderTypeCorSummary();
 }
 
 function renderTypeCorSummary(){
   const summary = document.getElementById('typeCorSummary');
   let total = 0;
   for(const r of typeCorState.rows){
-    total += parseDueDateText(r.dueText, r.frequency, typeCorState.year).length;
+    total += getAdjustedDeadlinesForRow(r).deadlines.length;
   }
   summary.innerHTML = `Will create <strong>${total}</strong> deadline${total===1?'':'s'} for <strong>${typeCorState.year}</strong>`;
 }
 
-// Build deadlines from the typed rows. Uses parseDueDateText for natural language;
-// falls back to BIR_FORM_RULES when the rule can't be parsed but a known form code
-// was typed. Honors per-row Filing Start Date by filtering out earlier deadlines.
+// Build deadlines from the typed rows. Uses getAdjustedDeadlinesForRow so the
+// same parsing + cross-row adjustment rules apply here as in the live preview.
+// Honors per-row Filing Start Date by filtering out earlier deadlines.
 function generateFromTypedCor(){
   const filled = typeCorState.rows.filter(r => r.dueText && r.dueText.trim());
   if(filled.length === 0){
@@ -3048,16 +3112,12 @@ function generateFromTypedCor(){
   let unparsedRows = 0;
 
   for(const r of filled){
-    let deadlines = parseDueDateText(r.dueText, r.frequency, typeCorState.year);
-    let ruleText  = r.dueText;
+    const {deadlines, usedFallback} = getAdjustedDeadlinesForRow(r);
+    let ruleText = r.dueText;
     let displayName = r.taxType || (r.formCode ? `BIR ${r.formCode}` : 'BIR Filing');
-
-    // Fallback: parser couldn't read it BUT user typed a known form code
-    if(deadlines.length === 0 && r.formCode && BIR_FORM_RULES[r.formCode]){
-      const rule = BIR_FORM_RULES[r.formCode];
-      deadlines = rule.generate(typeCorState.year);
-      ruleText = rule.rule;
-      displayName = rule.name;
+    if(usedFallback && BIR_FORM_RULES[r.formCode]){
+      ruleText = BIR_FORM_RULES[r.formCode].rule;
+      displayName = BIR_FORM_RULES[r.formCode].name;
     }
     if(deadlines.length === 0){ unparsedRows++; continue; }
 
