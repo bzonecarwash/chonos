@@ -602,9 +602,11 @@
   .detect-summary strong{font-size:18px;font-weight:700;}
 
   /* ----- "Type Your COR Table" manual entry modal ----- */
-  .type-cor-rows{display:flex;flex-direction:column;gap:12px;margin-top:14px;max-height:50vh;overflow-y:auto;padding-right:4px;}
+  .type-cor-rows{display:flex;flex-direction:column;gap:14px;margin-top:14px;max-height:55vh;overflow-y:auto;padding-right:4px;}
   .type-cor-row{
-    display:grid;grid-template-columns:1fr 1fr auto;gap:10px 14px;
+    display:grid;
+    grid-template-columns:1fr 1fr auto;
+    gap:10px 14px;
     padding:14px;border-radius:12px;
     background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);
     position:relative;
@@ -613,49 +615,62 @@
     .type-cor-row{grid-template-columns:1fr auto;gap:8px 10px;padding:12px;}
   }
   .type-cor-row .tcr-field{display:flex;flex-direction:column;gap:4px;min-width:0;}
+  /* The Filing Due Date column spans the full row width since it's a multi-line rule */
+  .type-cor-row .tcr-field.tcr-full{grid-column:1 / -1;}
   .type-cor-row .tcr-label{
     font-family:var(--font-display);font-size:9px;letter-spacing:1.5px;
     color:var(--text-3);text-transform:uppercase;
   }
+  .type-cor-row input[type="text"],
+  .type-cor-row input[type="date"],
   .type-cor-row select,
-  .type-cor-row input[type="date"]{
+  .type-cor-row textarea{
     width:100%;padding:8px 10px;border-radius:8px;
     background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);
     color:var(--text-1);font-size:13px;font-family:inherit;
+    box-sizing:border-box;
   }
+  .type-cor-row textarea{
+    resize:vertical;min-height:72px;line-height:1.4;
+  }
+  .type-cor-row input:focus,
   .type-cor-row select:focus,
-  .type-cor-row input[type="date"]:focus{
+  .type-cor-row textarea:focus{
     outline:none;border-color:var(--accent-cyan);
     box-shadow:0 0 0 2px rgba(125,249,255,0.15);
   }
-  /* Right column: remove button */
   .type-cor-row .tcr-remove{
-    grid-row:1 / -1;grid-column:-1 / -2;
+    grid-row:1 / 2;grid-column:-1 / -2;
     align-self:start;width:32px;height:32px;border-radius:8px;
     background:rgba(255,122,150,0.1);border:1px solid rgba(255,122,150,0.3);
     color:#ff7a96;cursor:pointer;font-size:16px;
     display:grid;place-items:center;transition:all 0.18s ease;
   }
   .type-cor-row .tcr-remove:hover{background:rgba(255,122,150,0.22);}
-  /* Auto-filled info panel — read-only details derived from the picked Form Type */
-  .type-cor-row .tcr-derived{
+  /* Live-parse preview: shows how the due-date text translated to actual dates */
+  .type-cor-row .tcr-preview{
     grid-column:1 / -1;
-    padding:8px 10px;border-radius:8px;
+    padding:8px 12px;border-radius:8px;
     background:rgba(125,249,255,0.06);border:1px solid rgba(125,249,255,0.18);
     font-size:11px;color:var(--text-2);line-height:1.45;
   }
-  .type-cor-row .tcr-derived.empty{
-    background:rgba(255,255,255,0.02);border-color:rgba(255,255,255,0.06);color:var(--text-3);
-    font-style:italic;
+  .type-cor-row .tcr-preview.empty{
+    background:rgba(255,255,255,0.02);border-color:rgba(255,255,255,0.06);
+    color:var(--text-3);font-style:italic;
   }
-  .type-cor-row .tcr-derived strong{color:var(--accent-cyan);font-weight:600;}
-  .type-cor-row .tcr-derived .freq-pill{
-    display:inline-block;margin-left:6px;padding:1px 8px;border-radius:4px;
-    font-family:var(--font-display);font-size:9px;letter-spacing:1px;
+  .type-cor-row .tcr-preview.error{
+    background:rgba(255,180,80,0.07);border-color:rgba(255,180,80,0.3);
+    color:#ffb450;
   }
-  .type-cor-row .tcr-derived .freq-pill.QUARTERLY{background:rgba(125,249,255,0.18);color:var(--accent-cyan);}
-  .type-cor-row .tcr-derived .freq-pill.MONTHLY  {background:rgba(255,122,217,0.18);color:var(--accent-pink);}
-  .type-cor-row .tcr-derived .freq-pill.ANNUALLY {background:rgba(179,136,255,0.18);color:var(--accent-violet);}
+  .type-cor-row .tcr-preview strong{color:var(--accent-cyan);}
+  .type-cor-row .tcr-preview-dates{
+    display:flex;flex-wrap:wrap;gap:4px 8px;margin-top:4px;
+  }
+  .type-cor-row .tcr-preview-date{
+    display:inline-block;padding:2px 7px;border-radius:4px;
+    background:rgba(125,249,255,0.12);color:var(--accent-cyan);
+    font-family:var(--font-display);font-size:10px;letter-spacing:0.5px;
+  }
 
   .type-cor-add{
     margin-top:10px;width:100%;justify-content:center;
@@ -1185,25 +1200,23 @@
 </div>
 
 <!-- ====== TYPE COR TABLE MANUALLY (TEXT-ENTRY ALTERNATIVE TO SCANNING) ====== -->
-<!-- For users whose photos can't be reliably read by the OCR. They look at the
-     physical/scanned COR, pick the Form Type from a dropdown per row (which
-     auto-fills tax type, frequency, and due-rule from BIR_FORM_RULES), and
-     type the Filing Start Date. Repeats per cert row. ──────────────────── -->
+<!-- User types each of the 5 columns from their physical COR. The Filing Due
+     Date column accepts free-form natural-language text ("1st Quarter on or
+     before MAY 15...") and a parser converts it to actual calendar deadlines. -->
 <div class="modal-backdrop" id="typeCorModal">
   <div class="modal modal-wide">
     <button class="close-x" data-close="typeCorModal">✕</button>
     <div class="modal-title">⌨ Type Your COR Table</div>
-    <div class="modal-sub">Add one row per line from your Certificate of Registration. Pick the Form Type — the rest auto-fills.</div>
+    <div class="modal-sub">Type the 5 columns from each row of your Certificate of Registration. The system will translate the words into dates.</div>
 
     <div class="form-detect-header">
-      <div style="color:var(--text-2);font-size:12px;">📋 Look at your COR table and add the rows below.</div>
+      <div style="color:var(--text-2);font-size:12px;">📋 One card per row from your COR. Add as many as you need.</div>
       <div class="form-detect-year">
         <label>Year for deadlines</label>
         <select id="typeCorYearSelect"></select>
       </div>
     </div>
 
-    <!-- Container for the dynamically-added cert rows -->
     <div class="type-cor-rows" id="typeCorRows"></div>
 
     <button type="button" class="btn type-cor-add" id="typeCorAddBtn">＋ Add another row from your COR</button>
@@ -2861,49 +2874,58 @@ function openManualPicker(){
 }
 
 /* =====================================================================
-   TYPE COR TABLE MANUALLY
+   TYPE COR TABLE MANUALLY (5 columns of free-text, natural-language parse)
    ─────────────────────────────────────────────────────────────────────
-   Text-entry alternative for when the OCR can't read a particular cert
-   photo (heavy security watermark, low contrast, etc.). User adds one
-   row per line from their COR; for each row they pick the Form Type and
-   enter the Filing Start Date. Tax type, frequency, and due-date rule
-   are derived from the Form Type (via BIR_FORM_RULES). At the bottom
-   they pick a year and click Generate — deadlines are created just like
-   from a successful scan.
+   User types each of the 5 cert columns verbatim from their physical COR.
+   The Filing Due Date column accepts natural-language rules — the parser
+   (parseDueDateText, defined below) translates phrases like
+     "1st Quarter-on or before MAY 15, 2nd Quarter-on or before AUGUST 15..."
+   into actual calendar dates. A live preview chip under each row shows
+   exactly which dates were extracted, so the user sees immediately whether
+   their typed words were understood. Honors the per-row Filing Start Date
+   by skipping any generated deadline that falls before it.
    ===================================================================== */
 
 const typeCorState = {
-  rows: [],   // each row: {id, formCode, startDate}
+  rows: [],   // each row: {id, taxType, formCode, startDate, frequency, dueText}
   year: new Date().getFullYear(),
 };
 
 function openTypeCorModal(){
   closeModal('welcomeModal');
   closeModal('corReviewModal');
-  // Reset state and start with one empty row so the user sees the shape immediately
   typeCorState.rows = [];
   typeCorState.year = new Date().getFullYear();
 
-  // Populate year selector (current year + next 2)
   const ySel = document.getElementById('typeCorYearSelect');
   const cy = new Date().getFullYear();
   ySel.innerHTML = [cy, cy+1, cy+2].map(y =>
     `<option value="${y}" ${y===typeCorState.year?'selected':''}>${y}</option>`
   ).join('');
-  ySel.onchange = (e) => { typeCorState.year = parseInt(e.target.value,10); renderTypeCorSummary(); };
+  ySel.onchange = (e) => {
+    typeCorState.year = parseInt(e.target.value, 10);
+    // Year change → re-parse every row's preview since dates are year-relative
+    document.querySelectorAll('.type-cor-row').forEach(rowEl => {
+      const rowId = rowEl.dataset.rowId;
+      const rs = typeCorState.rows.find(r => r.id === rowId);
+      if(rs) updateTypeCorRowPreview(rowEl, rs);
+    });
+    renderTypeCorSummary();
+  };
 
-  // Clear and add one starter row
   document.getElementById('typeCorRows').innerHTML = '';
   addTypeCorRow();
-
   openModal('typeCorModal');
 }
 
-function addTypeCorRow(initial){
+function addTypeCorRow(){
   const rowState = {
     id: uid(),
-    formCode: (initial && initial.formCode) || '',
-    startDate: (initial && initial.startDate) || toDateInput(new Date()),
+    taxType: '',
+    formCode: '',
+    startDate: toDateInput(new Date()),
+    frequency: '',
+    dueText: '',
   };
   typeCorState.rows.push(rowState);
 
@@ -2912,42 +2934,61 @@ function addTypeCorRow(initial){
   row.className = 'type-cor-row';
   row.dataset.rowId = rowState.id;
 
-  // Build Form Type dropdown options from BIR_FORM_RULES
-  const formOptions = [
-    '<option value="">— Pick from your COR —</option>',
-    ...Object.entries(BIR_FORM_RULES).map(([code, rule]) =>
-      `<option value="${code}" ${code===rowState.formCode?'selected':''}>${code} — ${rule.name}</option>`
-    )
-  ].join('');
-
   row.innerHTML = `
     <div class="tcr-field">
-      <label class="tcr-label">Form Type</label>
-      <select class="tcr-form-select">${formOptions}</select>
+      <label class="tcr-label">① Tax Type</label>
+      <input type="text" class="tcr-tax-type" placeholder="e.g. Individual Income Tax" autocomplete="off"/>
     </div>
     <div class="tcr-field">
-      <label class="tcr-label">Filing Start Date</label>
-      <input type="date" class="tcr-start-date" value="${rowState.startDate}"/>
+      <label class="tcr-label">② Form Type</label>
+      <input type="text" class="tcr-form-code" placeholder="e.g. 1701Q" autocomplete="off"/>
     </div>
     <button type="button" class="tcr-remove" title="Remove this row">✕</button>
-    <div class="tcr-derived empty">Pick a Form Type above — Tax Type, Frequency, and Due Date Rule will fill in automatically.</div>
+    <div class="tcr-field">
+      <label class="tcr-label">③ Filing Start Date</label>
+      <input type="date" class="tcr-start-date" value="${rowState.startDate}"/>
+    </div>
+    <div class="tcr-field">
+      <label class="tcr-label">④ Filing Frequency</label>
+      <select class="tcr-frequency">
+        <option value="">— Pick one —</option>
+        <option value="Monthly">Monthly</option>
+        <option value="Quarterly">Quarterly</option>
+        <option value="Annually">Annually</option>
+      </select>
+    </div>
+    <div class="tcr-field tcr-full">
+      <label class="tcr-label">⑤ Filing Due Date — type the rule from your COR</label>
+      <textarea class="tcr-due-text" placeholder="e.g. 1st Quarter-on or before MAY 15, 2nd Quarter-on or before AUGUST 15, 3rd Quarter-on or before NOVEMBER 15" rows="3"></textarea>
+    </div>
+    <div class="tcr-preview empty">⏳ Fill in the Filing Frequency and Filing Due Date to see the parsed deadlines.</div>
   `;
 
-  // Wire change handlers
-  row.querySelector('.tcr-form-select').addEventListener('change', (e) => {
-    rowState.formCode = e.target.value;
-    updateTypeCorRowDerived(row, rowState);
+  // Wire up live updates
+  row.querySelector('.tcr-tax-type').addEventListener('input',
+    (e) => { rowState.taxType = e.target.value.trim(); });
+  const formInp = row.querySelector('.tcr-form-code');
+  formInp.addEventListener('input', (e) => {
+    rowState.formCode = e.target.value.toUpperCase().trim();
+    e.target.value = rowState.formCode;
+  });
+  row.querySelector('.tcr-start-date').addEventListener('change',
+    (e) => { rowState.startDate = e.target.value; });
+  row.querySelector('.tcr-frequency').addEventListener('change', (e) => {
+    rowState.frequency = e.target.value;
+    updateTypeCorRowPreview(row, rowState);
     renderTypeCorSummary();
   });
-  row.querySelector('.tcr-start-date').addEventListener('change', (e) => {
-    rowState.startDate = e.target.value;
+  row.querySelector('.tcr-due-text').addEventListener('input', (e) => {
+    rowState.dueText = e.target.value;
+    updateTypeCorRowPreview(row, rowState);
+    renderTypeCorSummary();
   });
-  row.querySelector('.tcr-remove').addEventListener('click', () => {
-    removeTypeCorRow(rowState.id);
-  });
+  row.querySelector('.tcr-remove').addEventListener('click',
+    () => removeTypeCorRow(rowState.id));
 
   container.appendChild(row);
-  updateTypeCorRowDerived(row, rowState);
+  updateTypeCorRowPreview(row, rowState);
   renderTypeCorSummary();
 }
 
@@ -2955,94 +2996,96 @@ function removeTypeCorRow(id){
   typeCorState.rows = typeCorState.rows.filter(r => r.id !== id);
   const row = document.querySelector(`.type-cor-row[data-row-id="${id}"]`);
   if(row) row.remove();
-  // If they removed the last row, add a fresh empty one so the modal isn't blank
   if(typeCorState.rows.length === 0) addTypeCorRow();
   renderTypeCorSummary();
 }
 
-// Auto-fill the read-only details (tax type, frequency, due-date rule) for a row
-// when the user picks a Form Type. Uses BIR_FORM_RULES as source of truth.
-function updateTypeCorRowDerived(rowEl, rowState){
-  const derived = rowEl.querySelector('.tcr-derived');
-  if(!rowState.formCode){
-    derived.classList.add('empty');
-    derived.innerHTML = 'Pick a Form Type above — Tax Type, Frequency, and Due Date Rule will fill in automatically.';
+// Live preview: parse the row's typed due-date rule into actual dates and show
+// them as date badges. Shows an error message when the parser can't make sense
+// of the text so the user can adjust their wording.
+function updateTypeCorRowPreview(rowEl, rowState){
+  const prev = rowEl.querySelector('.tcr-preview');
+  if(!rowState.dueText || !rowState.dueText.trim()){
+    prev.className = 'tcr-preview empty';
+    prev.textContent = '⏳ Type the Filing Due Date rule above to see parsed deadlines.';
     return;
   }
-  const rule = BIR_FORM_RULES[rowState.formCode];
-  if(!rule){
-    derived.classList.add('empty');
-    derived.innerHTML = 'Unknown form code.';
+  const parsed = parseDueDateText(rowState.dueText, rowState.frequency, typeCorState.year);
+  if(parsed.length === 0){
+    prev.className = 'tcr-preview error';
+    prev.innerHTML = '⚠ Could not parse this due date rule. Make sure Filing Frequency is set, and that the rule uses phrases like "on or before", "within N days after", or "last day of the month following".';
     return;
   }
-  // Infer tax-type name from the form code prefix (BIR convention)
-  const taxTypeByPrefix = {
-    '17':'Individual Income Tax',
-    '25':'Percentage Tax',
-    '06':'Withholding Tax — Expanded/Others',
-    '16':'Withholding Tax — Expanded/Others',
-  };
-  const taxTypeName = taxTypeByPrefix[rowState.formCode.slice(0,2)] || 'Tax';
-  derived.classList.remove('empty');
-  derived.innerHTML = `
-    <strong>Tax Type:</strong> ${taxTypeName}
-    <span class="freq-pill ${rule.frequency}">${rule.frequency}</span>
-    <br/>
-    <strong>Due Rule:</strong> ${rule.rule}
-  `;
+  const badges = parsed.map(d =>
+    `<span class="tcr-preview-date">${d.label}: ${formatDueDate(d.due)}</span>`
+  ).join('');
+  prev.className = 'tcr-preview';
+  prev.innerHTML = `<strong>✓ Parsed ${parsed.length} deadline${parsed.length===1?'':'s'}</strong>` +
+                   `<div class="tcr-preview-dates">${badges}</div>`;
 }
 
-// Live count of how many deadlines will be generated based on filled rows
 function renderTypeCorSummary(){
   const summary = document.getElementById('typeCorSummary');
-  let totalDeadlines = 0;
+  let total = 0;
   for(const r of typeCorState.rows){
-    if(!r.formCode) continue;
-    const rule = BIR_FORM_RULES[r.formCode];
-    if(!rule) continue;
-    totalDeadlines += rule.generate(typeCorState.year).length;
+    total += parseDueDateText(r.dueText, r.frequency, typeCorState.year).length;
   }
-  summary.innerHTML = `Will create <strong>${totalDeadlines}</strong> deadline${totalDeadlines===1?'':'s'} for <strong>${typeCorState.year}</strong>`;
+  summary.innerHTML = `Will create <strong>${total}</strong> deadline${total===1?'':'s'} for <strong>${typeCorState.year}</strong>`;
 }
 
-// Take the typed rows and create deadlines, using the same dedup/insert path
-// as the scan flow so we don't duplicate work and behavior stays consistent.
+// Build deadlines from the typed rows. Uses parseDueDateText for natural language;
+// falls back to BIR_FORM_RULES when the rule can't be parsed but a known form code
+// was typed. Honors per-row Filing Start Date by filtering out earlier deadlines.
 function generateFromTypedCor(){
-  const filledRows = typeCorState.rows.filter(r => r.formCode && BIR_FORM_RULES[r.formCode]);
-  if(filledRows.length === 0){
-    toast('Add at least one row with a Form Type picked.');
+  const filled = typeCorState.rows.filter(r => r.dueText && r.dueText.trim());
+  if(filled.length === 0){
+    toast('Add at least one row and type its Filing Due Date.');
     return;
   }
+
   const existingTitles = new Set(state.deadlines.map(d => d.title));
   let added = 0;
-  for(const r of filledRows){
-    const rule = BIR_FORM_RULES[r.formCode];
-    const deadlines = rule.generate(typeCorState.year);
-    // Honor the filing start date: skip any generated deadline that falls
-    // before the user's filing start (e.g., don't create Q1 May 15 if their
-    // filing started October 29 of that year — they weren't registered yet).
+  let unparsedRows = 0;
+
+  for(const r of filled){
+    let deadlines = parseDueDateText(r.dueText, r.frequency, typeCorState.year);
+    let ruleText  = r.dueText;
+    let displayName = r.taxType || (r.formCode ? `BIR ${r.formCode}` : 'BIR Filing');
+
+    // Fallback: parser couldn't read it BUT user typed a known form code
+    if(deadlines.length === 0 && r.formCode && BIR_FORM_RULES[r.formCode]){
+      const rule = BIR_FORM_RULES[r.formCode];
+      deadlines = rule.generate(typeCorState.year);
+      ruleText = rule.rule;
+      displayName = rule.name;
+    }
+    if(deadlines.length === 0){ unparsedRows++; continue; }
+
     const startCutoff = r.startDate ? new Date(r.startDate + 'T00:00:00') : null;
+    const codePrefix = r.formCode ? `BIR ${r.formCode} — ` : 'BIR ';
+
     deadlines.forEach(dl => {
-      if(startCutoff && dl.due < startCutoff) return; // skip pre-registration deadlines
-      const title = `BIR ${r.formCode} — ${dl.label} ${typeCorState.year} (${rule.name})`;
+      if(startCutoff && dl.due < startCutoff) return;  // skip pre-registration
+      const title = `${codePrefix}${dl.label} ${typeCorState.year} (${displayName})`;
       if(existingTitles.has(title)) return;
       state.deadlines.push({
         id: uid(),
         title,
-        desc: rule.rule,
+        desc: ruleText,
         due: dl.due.toISOString(),
         completed: false,
         reminded: false,
-        _formCode: r.formCode,
+        _formCode: r.formCode || '',
       });
       existingTitles.add(title);
       added++;
     });
   }
+
   closeModal('typeCorModal');
   markOnboarded();
   refresh();
-  // Jump calendar to the earliest upcoming new deadline
+
   if(added > 0){
     const upcoming = state.deadlines
       .filter(d => !d.completed)
@@ -3051,13 +3094,197 @@ function generateFromTypedCor(){
       .sort((a,b)=>a-b)[0];
     if(upcoming){
       state.currentMonth = upcoming.getMonth();
-      state.currentYear = upcoming.getFullYear();
+      state.currentYear  = upcoming.getFullYear();
       renderCalendar();
     }
-    toast(`✓ Added ${added} deadline${added===1?'':'s'} for ${typeCorState.year}`);
+    const warn = unparsedRows ? ` · ⚠ ${unparsedRows} row${unparsedRows===1?'':'s'} unparsable` : '';
+    toast(`✓ Added ${added} deadline${added===1?'':'s'} for ${typeCorState.year}${warn}`);
   } else {
-    toast('All deadlines were already in your calendar.');
+    toast('No new deadlines added.');
   }
+}
+
+/* ----- Natural-language date helpers used by the typed-COR mode ----- */
+
+// Map month name (full or abbreviated, any case) to 0-indexed month.
+const MONTH_INDEX = {
+  january:0, jan:0, february:1, feb:1, march:2, mar:2, april:3, apr:3,
+  may:4, june:5, jun:5, july:6, jul:6, august:7, aug:7,
+  september:8, sept:8, sep:8, october:9, oct:9,
+  november:10, nov:10, december:11, dec:11,
+};
+const MONTH_PATTERN = '(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sept|sep|oct|nov|dec)';
+
+// Parse a typed date string like "October 29, 2025" or "2025-10-29" or "Oct 29 2025"
+// into a Date object. Returns null if it can't be confidently parsed.
+function parseTypedDate(text){
+  if(!text) return null;
+  const s = text.trim();
+  // ISO format: 2025-10-29
+  const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(iso) return new Date(parseInt(iso[1],10), parseInt(iso[2],10)-1, parseInt(iso[3],10));
+  // Natural: October 29, 2025 / Oct 29 2025 / 29 October 2025
+  const lower = s.toLowerCase();
+  const monthMatch = lower.match(new RegExp('\\b' + MONTH_PATTERN + '\\b'));
+  const yearMatch  = s.match(/\b(20\d{2})\b/);
+  const dayMatch   = s.match(/\b(\d{1,2})\b(?!\d)/);
+  if(monthMatch && yearMatch && dayMatch){
+    return new Date(parseInt(yearMatch[1],10), MONTH_INDEX[monthMatch[1]], parseInt(dayMatch[1],10));
+  }
+  return null;
+}
+
+// Format a Date for display in the preview (e.g. "May 15, 2026")
+function formatDueDate(d){
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+// Parse the descriptive "Filing Due Date" text from a BIR cert into a list of
+// concrete deadlines for the given year. Handles the six patterns commonly
+// printed on Certificates of Registration:
+//
+//   1. Multi-quarter explicit dates:
+//      "1st Quarter-on or before MAY 15, 2nd Quarter-on or before AUGUST 15,
+//       3rd Quarter-on or before November 15"
+//      → Q1 May 15, Q2 Aug 15, Q3 Nov 15
+//
+//   2. Within-N-days-of-quarter-end (Percentage Tax style):
+//      "Within twenty five (25) days after the end of each taxable quarter."
+//      → Q1 Apr 25, Q2 Jul 25, Q3 Oct 25, Q4 Jan 25 (of next year)
+//
+//   3. Last-day-of-month-following-quarter (1601EQ style):
+//      "Not later than the last day of the month following the close of the
+//       quarter during which withholding was made."
+//      → Q1 Apr 30, Q2 Jul 31, Q3 Oct 31, Q4 Jan 31 (of next year)
+//
+//   4. Monthly on Nth day of next month (0619E style):
+//      "On or before the 10th day of the month following the month in which
+//       withholding was made."
+//      → Jan→Feb 10, Feb→Mar 10, …, Dec→Jan 10 (of next year) — 12 deadlines
+//
+//   5. Annual for PRECEDING year (1701/1701A annual return style):
+//      "On or before April 15 of each year covering income for the preceding
+//       taxable year."
+//      → Annual due April 15 of year+1
+//
+//   6. Annual for FOLLOWING year (1604E alphalist style):
+//      "On or before March 1 of the year following the calendar year in which
+//       the income payments…"
+//      → Annual due March 1 of year+1
+//
+function parseDueDateText(text, frequency, year){
+  if(!text || typeof text !== 'string') return [];
+  const t = text.toLowerCase();
+
+  // --- Pattern 1: Multi-quarter explicit dates ---
+  // "1st Quarter ... May 15", "2nd Quarter ... August 15", etc.
+  const quarterRe = new RegExp(
+    '(1st|2nd|3rd|4th|first|second|third|fourth)\\s*quarter[\\s\\S]{0,80}?' +
+    MONTH_PATTERN + '\\s+(\\d{1,2})', 'g'
+  );
+  const quarterMatches = [...t.matchAll(quarterRe)];
+  if(quarterMatches.length >= 2){
+    return quarterMatches.map(m => {
+      const qWord = m[1];
+      const q = (qWord.startsWith('1') || qWord === 'first') ? 1
+              : (qWord.startsWith('2') || qWord === 'second') ? 2
+              : (qWord.startsWith('3') || qWord === 'third') ? 3 : 4;
+      return {
+        label: `Q${q}`,
+        due: new Date(year, MONTH_INDEX[m[2]], parseInt(m[3],10), 17, 0),
+      };
+    });
+  }
+
+  // --- Pattern 2: "Within N days after the end of each (taxable) quarter" ---
+  const withinMatch = t.match(/within\s+(?:(\d+)|(twenty[\s-]*five|twenty[\s-]*one|fifteen|thirty|ten|five))\s*\(?(\d+)?\)?\s*days?\s+after[\s\S]{0,40}?quarter/);
+  if(withinMatch){
+    let days = parseInt(withinMatch[1] || withinMatch[3], 10);
+    if(isNaN(days) && withinMatch[2]){
+      const w = withinMatch[2].replace(/[\s-]/g, '');
+      if(w === 'twentyfive') days = 25;
+      else if(w === 'twentyone') days = 21;
+      else if(w === 'fifteen') days = 15;
+      else if(w === 'thirty') days = 30;
+      else if(w === 'ten') days = 10;
+      else if(w === 'five') days = 5;
+    }
+    if(days){
+      const quarterEnds = [
+        new Date(year, 2, 31),   // Q1 ends Mar 31
+        new Date(year, 5, 30),   // Q2 ends Jun 30
+        new Date(year, 8, 30),   // Q3 ends Sep 30
+        new Date(year, 11, 31),  // Q4 ends Dec 31
+      ];
+      return quarterEnds.map((end, i) => {
+        const due = new Date(end);
+        due.setDate(due.getDate() + days);
+        due.setHours(17, 0, 0, 0);
+        return { label: `Q${i+1}`, due };
+      });
+    }
+  }
+
+  // --- Pattern 3: "Last day of the month following ... quarter" ---
+  if(/last\s+day\s+of\s+the\s+month\s+following[\s\S]{0,60}?quarter/.test(t)){
+    return [
+      { label:'Q1', due: new Date(year,   3, 30, 17, 0) },  // Apr 30
+      { label:'Q2', due: new Date(year,   6, 31, 17, 0) },  // Jul 31
+      { label:'Q3', due: new Date(year,   9, 31, 17, 0) },  // Oct 31
+      { label:'Q4', due: new Date(year+1, 0, 31, 17, 0) },  // Jan 31 next year
+    ];
+  }
+
+  // --- Pattern 4: Monthly "on or before the Nth day of the month following the month" ---
+  const monthlyMatch = t.match(/on\s+or\s+before\s+the\s+(\d+)(?:st|nd|rd|th)?\s+day\s+of\s+the\s+(?:next\s+|following\s+)?month\s+following[\s\S]{0,30}?month/);
+  if(monthlyMatch){
+    const dayOfMonth = parseInt(monthlyMatch[1], 10);
+    const names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    return names.map((name, idx) => {
+      const dueMonth = idx + 1;
+      const dueYear = dueMonth > 11 ? year + 1 : year;
+      const dueIdx  = dueMonth > 11 ? 0 : dueMonth;
+      return { label: name, due: new Date(dueYear, dueIdx, dayOfMonth, 17, 0) };
+    });
+  }
+
+  // --- Pattern 5: Annual for PRECEDING year ---
+  // "On or before April 15 ... preceding (taxable) year"
+  const annualPrecedingMatch = t.match(new RegExp(
+    'on\\s+or\\s+before\\s+' + MONTH_PATTERN + '\\s+(\\d{1,2})[\\s\\S]{0,100}?preceding\\s+(?:taxable\\s+)?year'
+  ));
+  if(annualPrecedingMatch){
+    return [{
+      label: 'Annual',
+      due: new Date(year + 1, MONTH_INDEX[annualPrecedingMatch[1]], parseInt(annualPrecedingMatch[2],10), 17, 0),
+    }];
+  }
+
+  // --- Pattern 6: Annual for FOLLOWING year ---
+  // "On or before March 1 of the year following the calendar year ..."
+  const annualFollowingMatch = t.match(new RegExp(
+    'on\\s+or\\s+before\\s+' + MONTH_PATTERN + '\\s+(\\d{1,2})[\\s\\S]{0,150}?(?:year\\s+following|following\\s+the\\s+calendar)'
+  ));
+  if(annualFollowingMatch){
+    return [{
+      label: 'Annual',
+      due: new Date(year + 1, MONTH_INDEX[annualFollowingMatch[1]], parseInt(annualFollowingMatch[2],10), 17, 0),
+    }];
+  }
+
+  // --- Pattern 7: Generic "on or before MONTH DAY" (annual, same year) ---
+  const genericMatch = t.match(new RegExp(
+    'on\\s+or\\s+before\\s+' + MONTH_PATTERN + '\\s+(\\d{1,2})'
+  ));
+  if(genericMatch && /annual/i.test(frequency || '')){
+    return [{
+      label: 'Annual',
+      due: new Date(year, MONTH_INDEX[genericMatch[1]], parseInt(genericMatch[2],10), 17, 0),
+    }];
+  }
+
+  return [];
 }
 
 function renderCorReview(){
