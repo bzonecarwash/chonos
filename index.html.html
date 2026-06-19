@@ -1,0 +1,2941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CHRONOS — Deadline Tracker</title>
+<style>
+  /* ------------ HOLOGRAPHIC GLASS THEME ------------- */
+  :root{
+    --bg-0:#05060f;
+    --bg-1:#0a0d22;
+    --bg-2:#101537;
+    --glass-bg:rgba(255,255,255,0.06);
+    --glass-border:rgba(180,200,255,0.18);
+    --glass-border-strong:rgba(180,200,255,0.35);
+    --text-1:#e9efff;
+    --text-2:#a9b4d8;
+    --text-3:#6b7aa8;
+    --accent-cyan:#7df9ff;
+    --accent-violet:#b388ff;
+    --accent-pink:#ff7ad9;
+    --accent-blue:#56a3ff;
+    --danger:#ff6b8a;
+    --success:#7dffb0;
+    --shadow-glow:0 0 40px rgba(123,176,255,0.25), 0 0 80px rgba(179,136,255,0.15);
+    --font-display:'Orbitron','Rajdhani',sans-serif;
+    --font-body:'Inter','Segoe UI',system-ui,sans-serif;
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap');
+
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:var(--font-body);
+    color:var(--text-1);
+    background:
+      radial-gradient(1200px 800px at 80% -10%,rgba(123,176,255,0.18),transparent 60%),
+      radial-gradient(900px 700px at -10% 110%,rgba(179,136,255,0.22),transparent 60%),
+      radial-gradient(800px 600px at 50% 50%,rgba(255,122,217,0.08),transparent 70%),
+      linear-gradient(135deg,var(--bg-0),var(--bg-1) 40%,var(--bg-2));
+    background-attachment:fixed;
+    overflow-x:hidden;
+    min-height:100vh;
+    position:relative;
+  }
+
+  /* Animated holographic shimmer overlay */
+  body::before{
+    content:"";
+    position:fixed;inset:0;pointer-events:none;
+    background:
+      repeating-linear-gradient(0deg,rgba(125,249,255,0.03) 0 1px,transparent 1px 4px),
+      conic-gradient(from 0deg at 50% 50%, rgba(123,176,255,0.06), rgba(179,136,255,0.06), rgba(255,122,217,0.06), rgba(123,176,255,0.06));
+    mix-blend-mode:screen;
+    animation:shimmer 30s linear infinite;
+    z-index:0;
+  }
+  @keyframes shimmer{
+    0%{transform:rotate(0deg) scale(1.1);}
+    100%{transform:rotate(360deg) scale(1.1);}
+  }
+
+  /* Floating particles */
+  .particles{position:fixed;inset:0;pointer-events:none;z-index:1;}
+  .particles span{
+    position:absolute;width:4px;height:4px;border-radius:50%;
+    background:radial-gradient(circle,rgba(125,249,255,0.9),transparent 70%);
+    animation:float 12s linear infinite;
+    opacity:0.6;
+  }
+  @keyframes float{
+    0%{transform:translateY(110vh) translateX(0) scale(0.6);opacity:0;}
+    10%{opacity:0.8;}
+    90%{opacity:0.8;}
+    100%{transform:translateY(-10vh) translateX(40px) scale(1);opacity:0;}
+  }
+
+  .app{position:relative;z-index:2;max-width:1320px;margin:0 auto;padding:32px 28px 80px;}
+
+  /* ------------ HEADER ------------- */
+  header.hero{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:28px;flex-wrap:wrap;gap:20px;
+  }
+  .brand{display:flex;align-items:center;gap:14px;}
+  .brand-mark{
+    width:56px;height:56px;border-radius:14px;position:relative;
+    background:linear-gradient(135deg,rgba(125,249,255,0.25),rgba(179,136,255,0.25));
+    border:1px solid var(--glass-border-strong);
+    backdrop-filter:blur(20px);
+    box-shadow:var(--shadow-glow);
+    display:grid;place-items:center;
+    overflow:hidden;
+  }
+  .brand-mark::after{
+    content:"";position:absolute;inset:0;
+    background:conic-gradient(from 0deg,transparent,rgba(125,249,255,0.6),transparent 30%);
+    animation:spin 6s linear infinite;
+  }
+  .brand-mark svg{position:relative;z-index:1;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .brand h1{
+    font-family:var(--font-display);font-weight:700;font-size:26px;letter-spacing:6px;
+    background:linear-gradient(90deg,var(--accent-cyan),var(--accent-violet),var(--accent-pink));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .brand small{display:block;font-family:var(--font-display);letter-spacing:4px;font-size:10px;color:var(--text-3);}
+
+  .header-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+
+  .btn{
+    font-family:var(--font-display);letter-spacing:2px;font-size:12px;font-weight:600;
+    text-transform:uppercase;cursor:pointer;border:none;
+    padding:12px 20px;border-radius:10px;
+    background:var(--glass-bg);border:1px solid var(--glass-border);
+    color:var(--text-1);backdrop-filter:blur(20px);
+    transition:all 0.25s ease;display:inline-flex;align-items:center;gap:8px;
+  }
+  .btn:hover{
+    border-color:var(--accent-cyan);
+    box-shadow:0 0 20px rgba(125,249,255,0.35);
+    transform:translateY(-1px);
+  }
+  .btn.primary{
+    background:linear-gradient(135deg,rgba(125,249,255,0.25),rgba(179,136,255,0.25));
+    border-color:var(--glass-border-strong);
+    color:#fff;
+  }
+  .btn.primary:hover{box-shadow:0 0 30px rgba(179,136,255,0.55);}
+  .btn.danger{color:var(--danger);}
+  .btn.danger:hover{border-color:var(--danger);box-shadow:0 0 20px rgba(255,107,138,0.35);}
+
+  /* ------------ STATUS STRIP ------------- */
+  .status-strip{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;
+  }
+  .stat-card{
+    padding:16px 18px;border-radius:14px;
+    background:var(--glass-bg);border:1px solid var(--glass-border);
+    backdrop-filter:blur(20px);
+    position:relative;overflow:hidden;
+  }
+  .stat-card::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:1px;
+    background:linear-gradient(90deg,transparent,var(--accent-cyan),transparent);
+    opacity:0.7;
+  }
+  .stat-label{font-family:var(--font-display);font-size:10px;letter-spacing:3px;color:var(--text-3);text-transform:uppercase;}
+  .stat-value{font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--text-1);margin-top:6px;}
+  .stat-value.cyan{color:var(--accent-cyan);text-shadow:0 0 12px rgba(125,249,255,0.6);}
+  .stat-value.violet{color:var(--accent-violet);text-shadow:0 0 12px rgba(179,136,255,0.6);}
+  .stat-value.pink{color:var(--accent-pink);text-shadow:0 0 12px rgba(255,122,217,0.6);}
+  .stat-value.success{color:var(--success);text-shadow:0 0 12px rgba(125,255,176,0.5);}
+
+  /* ------------ MAIN GRID ------------- */
+  .main-grid{display:grid;grid-template-columns:1fr 360px;gap:24px;}
+  @media (max-width:1024px){.main-grid{grid-template-columns:1fr;} .status-strip{grid-template-columns:repeat(2,1fr);}}
+
+  /* ----- Phone-width tightening: fix calendar grid overflow at narrow widths ----- */
+  @media (max-width:640px){
+    .app{padding:18px 10px 60px;}
+
+    /* Header — let the brand subtitle wrap, shrink the wordmark a touch */
+    .brand h1{font-size:22px;letter-spacing:3px;}
+    .brand small{font-size:9px;letter-spacing:2px;white-space:normal;}
+    .brand-mark{width:48px;height:48px;}
+    .header-actions{gap:8px;}
+    .header-actions .btn{padding:10px 14px;font-size:11px;letter-spacing:1.5px;}
+
+    /* Status strip stays 2x2, just smaller numerals so they don't crowd */
+    .stat-card{padding:12px 14px;}
+    .stat-value{font-size:22px;}
+
+    /* Panels — slim padding so the 7-col grid actually has room */
+    .panel{padding:14px;border-radius:14px;}
+
+    /* Calendar header — let title and nav stack instead of fighting on one row */
+    .panel-header{flex-wrap:wrap;gap:10px;}
+    .panel-title{font-size:12px;letter-spacing:2px;}
+    /* Force the calendar nav (‹ APRIL 2026 ›) onto its own row below the title,
+       so the next-month button has room and doesn't get pushed off-screen. */
+    .cal-nav{flex-basis:100%;width:100%;justify-content:space-between;gap:10px;min-width:0;}
+    .cal-nav button{
+      width:40px;height:40px;flex-shrink:0;  /* roomier tap target, never shrinks */
+      font-size:20px;
+    }
+    .cal-month{min-width:0;flex:1;font-size:14px;letter-spacing:2px;text-align:center;}
+
+    /* Calendar grid — tighter gaps and smaller cell content so all 7 cols fit */
+    .cal-grid,.cal-weekdays{gap:4px;}
+    .cal-weekdays div{font-size:9px;letter-spacing:1px;padding:4px 0;}
+    .cal-day{padding:4px;border-radius:8px;}
+    .cal-day .day-num{font-size:12px;}
+    .cal-day .day-count{font-size:7px;letter-spacing:0;}
+    .cal-day.has-deadline::after{width:14px;height:2px;bottom:3px;}
+
+    /* Sidebar deadline list — give it a little breathing room */
+    .deadline-list{max-height:none;}
+  }
+
+  .panel{
+    background:var(--glass-bg);border:1px solid var(--glass-border);
+    backdrop-filter:blur(24px);border-radius:18px;
+    box-shadow:var(--shadow-glow);
+    padding:22px;position:relative;overflow:hidden;
+  }
+  .panel::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:1px;
+    background:linear-gradient(90deg,transparent,var(--accent-violet),transparent);
+  }
+
+  .panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+  .panel-title{font-family:var(--font-display);letter-spacing:3px;font-size:14px;text-transform:uppercase;color:var(--text-1);}
+  .panel-title .pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent-cyan);box-shadow:0 0 10px var(--accent-cyan);margin-right:8px;animation:pulse 1.6s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:0.4;transform:scale(0.9);}50%{opacity:1;transform:scale(1.2);}}
+
+  /* ------------ CALENDAR ------------- */
+  .cal-nav{display:flex;align-items:center;gap:12px;}
+  .cal-nav button{
+    width:36px;height:36px;border-radius:10px;background:var(--glass-bg);
+    border:1px solid var(--glass-border);color:var(--text-1);cursor:pointer;
+    display:grid;place-items:center;transition:all 0.2s;
+  }
+  .cal-nav button:hover{border-color:var(--accent-cyan);box-shadow:0 0 12px rgba(125,249,255,0.4);}
+  .cal-month{font-family:var(--font-display);font-size:18px;letter-spacing:4px;min-width:200px;text-align:center;}
+
+  .cal-weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin-bottom:8px;}
+  .cal-weekdays div{
+    text-align:center;font-family:var(--font-display);font-size:10px;letter-spacing:2px;
+    color:var(--text-3);padding:8px 0;text-transform:uppercase;
+  }
+
+  .cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;}
+  .cal-day{
+    aspect-ratio:1/1;border-radius:10px;padding:8px;
+    background:rgba(255,255,255,0.03);border:1px solid rgba(180,200,255,0.08);
+    position:relative;cursor:pointer;transition:all 0.2s ease;
+    display:flex;flex-direction:column;
+    overflow:hidden;min-width:0;
+  }
+  .cal-day:hover{
+    background:rgba(125,249,255,0.08);border-color:var(--accent-cyan);
+    box-shadow:0 0 14px rgba(125,249,255,0.25);
+    transform:translateY(-2px);
+  }
+  .cal-day.muted{opacity:0.35;}
+  .cal-day.today{
+    border-color:var(--accent-violet);
+    background:linear-gradient(135deg,rgba(179,136,255,0.18),rgba(125,249,255,0.12));
+    box-shadow:0 0 20px rgba(179,136,255,0.4);
+  }
+  .cal-day.has-deadline::after{
+    content:"";position:absolute;bottom:6px;left:50%;transform:translateX(-50%);
+    width:24px;height:3px;border-radius:2px;
+    background:linear-gradient(90deg,var(--accent-cyan),var(--accent-pink));
+    box-shadow:0 0 8px var(--accent-pink);
+  }
+  .cal-day.overdue::after{background:linear-gradient(90deg,var(--danger),var(--accent-pink));}
+  .cal-day .day-num{font-family:var(--font-display);font-size:14px;font-weight:600;}
+  .cal-day .day-count{
+    font-size:9px;font-family:var(--font-display);letter-spacing:1px;
+    color:var(--accent-cyan);margin-top:auto;text-align:right;
+  }
+
+  /* ------------ SIDEBAR ------------- */
+  .deadline-list{display:flex;flex-direction:column;gap:10px;max-height:520px;overflow-y:auto;padding-right:6px;}
+  .deadline-list::-webkit-scrollbar{width:6px;}
+  .deadline-list::-webkit-scrollbar-track{background:transparent;}
+  .deadline-list::-webkit-scrollbar-thumb{background:rgba(180,200,255,0.2);border-radius:3px;}
+
+  .deadline-item{
+    padding:14px;border-radius:12px;
+    background:rgba(255,255,255,0.04);border:1px solid rgba(180,200,255,0.12);
+    cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden;
+  }
+  .deadline-item::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+    background:linear-gradient(180deg,var(--accent-cyan),var(--accent-violet));
+  }
+  .deadline-item:hover{border-color:var(--accent-cyan);transform:translateX(2px);background:rgba(125,249,255,0.06);}
+  .deadline-item.overdue::before{background:linear-gradient(180deg,var(--danger),var(--accent-pink));}
+  .deadline-item.completed{opacity:0.5;}
+  .deadline-item.completed::before{background:var(--success);}
+  .deadline-title{font-weight:600;font-size:14px;margin-bottom:4px;}
+  .deadline-meta{font-size:11px;color:var(--text-2);font-family:var(--font-display);letter-spacing:1px;}
+  .deadline-meta .countdown{color:var(--accent-cyan);}
+  .deadline-meta .countdown.urgent{color:var(--accent-pink);}
+  .deadline-meta .countdown.overdue{color:var(--danger);}
+
+  .empty-state{text-align:center;padding:30px 16px;color:var(--text-3);font-size:13px;}
+
+  /* ------------ MODAL ------------- */
+  .modal-backdrop{
+    position:fixed;inset:0;z-index:100;
+    background:rgba(5,6,15,0.7);backdrop-filter:blur(8px);
+    display:none;align-items:center;justify-content:center;padding:20px;
+    animation:fadeIn 0.3s ease;
+  }
+  .modal-backdrop.active{display:flex;}
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+
+  .modal{
+    background:linear-gradient(135deg,rgba(20,25,55,0.95),rgba(10,13,34,0.95));
+    border:1px solid var(--glass-border-strong);
+    border-radius:20px;padding:30px;max-width:520px;width:100%;
+    box-shadow:0 0 60px rgba(179,136,255,0.4), 0 0 120px rgba(125,249,255,0.2);
+    position:relative;overflow:hidden;
+    animation:modalIn 0.4s cubic-bezier(0.18,1.25,0.4,1);
+  }
+  .modal::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:2px;
+    background:linear-gradient(90deg,var(--accent-cyan),var(--accent-violet),var(--accent-pink));
+  }
+  .modal::after{
+    content:"";position:absolute;inset:-50%;
+    background:conic-gradient(from 0deg,transparent,rgba(125,249,255,0.1),transparent 30%);
+    animation:spin 8s linear infinite;
+    z-index:0;pointer-events:none;
+  }
+  .modal > *{position:relative;z-index:1;}
+  @keyframes modalIn{from{opacity:0;transform:scale(0.9) translateY(20px);}to{opacity:1;transform:scale(1) translateY(0);}}
+
+  .modal-title{font-family:var(--font-display);font-size:18px;letter-spacing:3px;text-transform:uppercase;margin-bottom:6px;
+    background:linear-gradient(90deg,var(--accent-cyan),var(--accent-violet));
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .modal-sub{color:var(--text-3);font-family:var(--font-display);font-size:11px;letter-spacing:3px;margin-bottom:22px;text-transform:uppercase;}
+
+  .form-row{display:flex;flex-direction:column;margin-bottom:14px;}
+  .form-row label{font-family:var(--font-display);font-size:10px;letter-spacing:2px;color:var(--text-3);margin-bottom:6px;text-transform:uppercase;}
+  .form-row input,.form-row textarea,.form-row select{
+    background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);
+    color:var(--text-1);padding:12px 14px;border-radius:10px;font-family:var(--font-body);font-size:14px;
+    transition:all 0.2s;outline:none;
+  }
+  .form-row input:focus,.form-row textarea:focus,.form-row select:focus{
+    border-color:var(--accent-cyan);box-shadow:0 0 14px rgba(125,249,255,0.3);
+  }
+  .form-row textarea{resize:vertical;min-height:80px;}
+  .form-row.row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .form-row.row-2 > div{display:flex;flex-direction:column;}
+  .form-row.row-2 label{margin-bottom:6px;}
+
+  /* Wider modal for the payment log */
+  .modal.modal-wide{max-width:720px;}
+  .modal.modal-wide form{max-height:70vh;overflow-y:auto;padding-right:6px;}
+  .modal.modal-wide form::-webkit-scrollbar{width:6px;}
+  .modal.modal-wide form::-webkit-scrollbar-thumb{background:rgba(180,200,255,0.25);border-radius:3px;}
+
+  .form-section{
+    margin-bottom:16px;padding:14px;border-radius:12px;
+    background:rgba(255,255,255,0.03);
+    border:1px solid rgba(180,200,255,0.10);
+    position:relative;
+  }
+  .form-section-title{
+    font-family:var(--font-display);font-size:10px;letter-spacing:3px;
+    color:var(--accent-cyan);text-transform:uppercase;margin-bottom:12px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .form-section-title::before{
+    content:"";width:6px;height:6px;border-radius:50%;background:var(--accent-cyan);
+    box-shadow:0 0 8px var(--accent-cyan);
+  }
+  .form-grid{display:grid;gap:12px;}
+  .form-grid.grid-2{grid-template-columns:1fr 1fr;}
+  .form-grid.grid-3{grid-template-columns:1fr 1fr 1fr;}
+  .form-grid .form-row{margin-bottom:0;}
+  .form-grid .span-2{grid-column:span 2;}
+  @media (max-width:600px){
+    .form-grid.grid-3,.form-grid.grid-2{grid-template-columns:1fr;}
+    .form-grid .span-2{grid-column:span 1;}
+  }
+
+  .pay-method-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px;}
+  .pay-method-row button{
+    padding:10px 8px;border-radius:8px;cursor:pointer;
+    background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);
+    color:var(--text-2);font-family:var(--font-display);letter-spacing:1.5px;font-size:10px;
+    text-transform:uppercase;transition:all 0.2s;
+  }
+  .pay-method-row button.active{
+    background:linear-gradient(135deg,rgba(125,249,255,0.25),rgba(179,136,255,0.25));
+    color:var(--text-1);border-color:var(--accent-cyan);
+    box-shadow:0 0 12px rgba(125,249,255,0.4);
+  }
+  .pay-method-row button.active.maya{
+    background:linear-gradient(135deg,rgba(125,255,176,0.25),rgba(125,249,255,0.25));
+    border-color:var(--success);color:var(--success);
+    box-shadow:0 0 12px rgba(125,255,176,0.4);
+  }
+
+  .currency-input{position:relative;}
+  .currency-input::before{
+    content:"₱";position:absolute;left:12px;top:50%;transform:translateY(-50%);
+    color:var(--accent-cyan);font-family:var(--font-display);font-weight:600;font-size:14px;
+    pointer-events:none;z-index:2;
+  }
+  .currency-input input{padding-left:28px;}
+
+  /* ----- Receipt Scanner ----- */
+  .scan-section{margin-bottom:16px;}
+  .scan-banner{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;
+    padding:16px;border-radius:14px;
+    background:linear-gradient(135deg,rgba(125,255,176,0.12),rgba(125,249,255,0.12));
+    border:1px solid rgba(125,255,176,0.35);
+    position:relative;overflow:hidden;
+  }
+  .scan-banner::before{
+    content:"";position:absolute;top:0;left:-100%;width:60%;height:100%;
+    background:linear-gradient(90deg,transparent,rgba(125,255,176,0.25),transparent);
+    animation:scanShine 3s ease-in-out infinite;
+  }
+  @keyframes scanShine{
+    0%{left:-100%;} 50%{left:100%;} 100%{left:100%;}
+  }
+  .scan-banner > .scan-info{flex:1;position:relative;z-index:1;}
+  .scan-banner strong{display:block;color:var(--text-1);font-size:14px;margin-bottom:3px;font-family:var(--font-display);letter-spacing:1px;}
+  .scan-banner small{color:var(--text-2);font-size:11px;line-height:1.4;display:block;}
+  .scan-btn{
+    background:linear-gradient(135deg,var(--success),var(--accent-cyan)) !important;
+    color:#001a0d !important;font-weight:700 !important;letter-spacing:2px !important;
+    border:1px solid var(--success) !important;position:relative;z-index:1;cursor:pointer;
+    box-shadow:0 0 16px rgba(125,255,176,0.4);
+  }
+  .scan-btn:hover{
+    box-shadow:0 0 28px rgba(125,255,176,0.7) !important;
+    transform:translateY(-1px);
+  }
+
+  .scan-progress{
+    margin-top:10px;padding:14px;border-radius:12px;
+    background:rgba(0,0,0,0.25);border:1px solid var(--glass-border);
+    display:flex;align-items:center;gap:12px;
+  }
+  .scan-progress .scan-preview{
+    width:64px;height:64px;border-radius:10px;object-fit:cover;
+    border:1px solid var(--glass-border);background:rgba(255,255,255,0.05);
+    flex-shrink:0;
+  }
+  .scan-progress .scan-info-block{flex:1;min-width:0;}
+  .scan-progress-bar{
+    height:6px;border-radius:3px;background:rgba(255,255,255,0.08);
+    overflow:hidden;margin-bottom:6px;
+  }
+  .scan-progress-fill{
+    height:100%;background:linear-gradient(90deg,var(--accent-cyan),var(--success));
+    width:0;transition:width 0.3s ease;box-shadow:0 0 8px var(--accent-cyan);
+  }
+  .scan-progress-text{
+    font-family:var(--font-display);font-size:11px;letter-spacing:1.5px;color:var(--text-2);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  /* When the scan finishes with an issue, allow the diagnostic peek to wrap so user can read it */
+  .scan-progress.error .scan-progress-text,
+  .scan-progress.success .scan-progress-text{
+    white-space:normal;line-height:1.4;letter-spacing:0.5px;
+  }
+  .scan-progress.success .scan-progress-fill{background:var(--success);}
+  .scan-progress.error .scan-progress-fill{background:var(--danger);}
+  .scan-progress.error .scan-progress-text{color:var(--danger);}
+  /* Inline "Pick forms manually →" link that appears next to OCR error messages */
+  .link-btn{
+    display:inline-block;margin-left:6px;padding:4px 10px;
+    background:rgba(125,210,255,0.12);border:1px solid rgba(125,210,255,0.3);
+    color:var(--accent);font-family:var(--font-display);font-size:11px;letter-spacing:1px;
+    border-radius:6px;cursor:pointer;transition:all 0.18s ease;
+  }
+  .link-btn:hover{background:rgba(125,210,255,0.22);border-color:rgba(125,210,255,0.5);}
+
+  /* Auto-fill flash animation for fields */
+  @keyframes fieldFlash{
+    0%{box-shadow:0 0 0 4px rgba(125,255,176,0.5);background:rgba(125,255,176,0.18);}
+    100%{box-shadow:0 0 0 0 rgba(125,255,176,0);background:rgba(255,255,255,0.06);}
+  }
+  .field-flash{
+    animation:fieldFlash 1.6s ease-out;
+    border-color:var(--success) !important;
+  }
+  .pm-btn.field-flash{animation:fieldFlash 1.6s ease-out;}
+
+  /* ----- Welcome / Onboarding Modal ----- */
+  .welcome-modal{
+    max-width:560px;text-align:center;
+    background:linear-gradient(135deg,rgba(20,25,55,0.97),rgba(10,13,34,0.97));
+  }
+  .welcome-hero{
+    width:90px;height:90px;border-radius:24px;margin:0 auto 18px;
+    background:linear-gradient(135deg,rgba(125,249,255,0.3),rgba(179,136,255,0.3));
+    border:1px solid var(--glass-border-strong);
+    display:grid;place-items:center;position:relative;overflow:hidden;
+    box-shadow:0 0 40px rgba(125,249,255,0.4);
+  }
+  .welcome-hero::after{
+    content:"";position:absolute;inset:0;
+    background:conic-gradient(from 0deg,transparent,rgba(125,249,255,0.5),transparent 30%);
+    animation:spin 5s linear infinite;
+  }
+  .welcome-hero svg{position:relative;z-index:1;}
+
+  .welcome-title{font-family:var(--font-display);font-size:22px;letter-spacing:4px;font-weight:700;margin-bottom:8px;
+    background:linear-gradient(90deg,var(--accent-cyan),var(--accent-violet));
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .welcome-greeting{color:var(--text-2);font-size:14px;line-height:1.6;margin-bottom:24px;}
+  .welcome-actions{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
+  .welcome-actions .btn{justify-content:center;font-size:13px;padding:14px 20px;}
+  .welcome-actions .btn.scan-primary{
+    background:linear-gradient(135deg,var(--success),var(--accent-cyan)) !important;
+    color:#001a0d !important;font-weight:700 !important;letter-spacing:2px !important;
+    border:1px solid var(--success) !important;
+    box-shadow:0 0 24px rgba(125,255,176,0.45);
+  }
+  .welcome-actions .btn.scan-primary:hover{box-shadow:0 0 36px rgba(125,255,176,0.7) !important;}
+  .welcome-note{
+    font-family:var(--font-display);font-size:10px;letter-spacing:1.5px;
+    color:var(--text-3);text-transform:uppercase;margin-top:10px;
+  }
+
+  /* Detected forms list (review step) */
+  .form-detect-header{
+    display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap;
+  }
+  .form-detect-year{display:flex;align-items:center;gap:8px;}
+  .form-detect-year label{font-family:var(--font-display);font-size:10px;letter-spacing:2px;color:var(--text-3);text-transform:uppercase;}
+  .form-detect-year select{
+    background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);
+    color:var(--text-1);padding:6px 10px;border-radius:6px;font-family:var(--font-display);font-size:12px;
+  }
+  .form-detect-list{
+    display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto;padding-right:4px;
+  }
+  .form-detect-list::-webkit-scrollbar{width:6px;}
+  .form-detect-list::-webkit-scrollbar-thumb{background:rgba(180,200,255,0.2);border-radius:3px;}
+
+  .form-detect-item{
+    display:flex;align-items:flex-start;gap:12px;padding:12px;border-radius:10px;
+    background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);
+    cursor:pointer;transition:all 0.15s;
+  }
+  .form-detect-item:hover{border-color:var(--accent-cyan);}
+  .form-detect-item.selected{
+    background:linear-gradient(135deg,rgba(125,249,255,0.1),rgba(179,136,255,0.1));
+    border-color:var(--accent-cyan);box-shadow:0 0 12px rgba(125,249,255,0.25);
+  }
+  .form-detect-check{
+    width:22px;height:22px;border-radius:6px;border:1px solid var(--glass-border);
+    flex-shrink:0;display:grid;place-items:center;color:transparent;
+    background:rgba(255,255,255,0.04);font-weight:700;transition:all 0.2s;
+  }
+  .form-detect-item.selected .form-detect-check{
+    background:linear-gradient(135deg,var(--success),var(--accent-cyan));
+    border-color:var(--success);color:#001a0d;
+  }
+  .form-detect-body{flex:1;min-width:0;}
+  .form-detect-code{
+    font-family:var(--font-display);font-size:14px;font-weight:700;
+    color:var(--text-1);letter-spacing:2px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .form-detect-code .freq-pill{
+    font-size:9px;letter-spacing:1px;padding:2px 8px;border-radius:4px;
+    background:rgba(125,249,255,0.18);color:var(--accent-cyan);
+    border:1px solid rgba(125,249,255,0.35);
+  }
+  .form-detect-code .freq-pill.MONTHLY{background:rgba(255,122,217,0.18);color:var(--accent-pink);border-color:rgba(255,122,217,0.35);}
+  .form-detect-code .freq-pill.QUARTERLY{background:rgba(125,249,255,0.18);color:var(--accent-cyan);border-color:rgba(125,249,255,0.35);}
+  .form-detect-code .freq-pill.ANNUALLY{background:rgba(179,136,255,0.18);color:var(--accent-violet);border-color:rgba(179,136,255,0.35);}
+  .form-detect-name{color:var(--text-2);font-size:12px;margin-top:3px;}
+  /* Captured-from-table metadata: tax type name and filing start date pulled from the BIR cert */
+  .form-detect-meta{
+    color:var(--accent-cyan);font-size:11px;margin-top:5px;
+    background:rgba(125,249,255,0.07);border:1px solid rgba(125,249,255,0.18);
+    border-radius:6px;padding:3px 8px;display:inline-block;letter-spacing:0.3px;
+  }
+  /* Captured "Filing Due Date" column text — longer prose, so we use a softer
+     violet tint, full-width block, and a relaxed line-height for readability. */
+  .form-detect-due{
+    display:block;color:var(--accent-violet);
+    background:rgba(179,136,255,0.07);border:1px solid rgba(179,136,255,0.18);
+    line-height:1.4;font-size:11px;
+  }
+  /* Warning pill shown when OCR-read frequency disagrees with the form code's expected frequency */
+  .freq-mismatch{
+    display:inline-block;margin-left:6px;padding:2px 8px;
+    background:rgba(255,180,80,0.18);border:1px solid rgba(255,180,80,0.4);color:#ffb450;
+    font-family:var(--font-display);font-size:9px;letter-spacing:1px;border-radius:4px;
+  }
+  .form-detect-rule{color:var(--text-3);font-size:11px;margin-top:4px;font-family:var(--font-display);letter-spacing:1px;}
+  .form-detect-count{
+    flex-shrink:0;font-family:var(--font-display);font-size:11px;letter-spacing:1px;
+    color:var(--text-3);text-align:right;white-space:nowrap;
+  }
+  .form-detect-count strong{color:var(--accent-cyan);font-size:14px;display:block;}
+
+  .detect-summary{
+    margin-top:14px;padding:12px;border-radius:10px;
+    background:rgba(125,249,255,0.08);border:1px solid rgba(125,249,255,0.25);
+    text-align:center;font-family:var(--font-display);font-size:12px;letter-spacing:2px;
+    color:var(--accent-cyan);
+  }
+  .detect-summary strong{font-size:18px;font-weight:700;}
+
+  /* ----- Records Modal (consolidated payments) ----- */
+  .modal.modal-xl{max-width:1200px;width:96%;max-height:92vh;display:flex;flex-direction:column;}
+  .records-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+  @media (max-width:720px){.records-stats{grid-template-columns:repeat(2,1fr);}}
+  .records-stat{
+    padding:12px 14px;border-radius:10px;
+    background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);
+    position:relative;overflow:hidden;
+  }
+  .records-stat::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:1px;
+    background:linear-gradient(90deg,transparent,var(--accent-cyan),transparent);
+  }
+  .records-stat .rs-label{font-family:var(--font-display);font-size:9px;letter-spacing:2px;color:var(--text-3);text-transform:uppercase;}
+  .records-stat .rs-value{font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--text-1);margin-top:4px;}
+  .records-stat .rs-value.cyan{color:var(--accent-cyan);text-shadow:0 0 10px rgba(125,249,255,0.5);}
+  .records-stat .rs-value.success{color:var(--success);text-shadow:0 0 10px rgba(125,255,176,0.5);}
+  .records-stat .rs-value.violet{color:var(--accent-violet);text-shadow:0 0 10px rgba(179,136,255,0.5);}
+  .records-stat .rs-value.pink{color:var(--accent-pink);text-shadow:0 0 10px rgba(255,122,217,0.5);}
+
+  .records-filters{
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;
+    padding:12px;border-radius:10px;
+    background:rgba(255,255,255,0.03);border:1px solid var(--glass-border);
+  }
+  .records-filters input,.records-filters select{
+    background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);
+    color:var(--text-1);padding:8px 12px;border-radius:8px;font-family:var(--font-body);font-size:13px;
+    outline:none;transition:all 0.2s;
+  }
+  .records-filters input:focus,.records-filters select:focus{border-color:var(--accent-cyan);box-shadow:0 0 10px rgba(125,249,255,0.25);}
+  .records-filters input[type="search"]{flex:1;min-width:180px;}
+  .records-filters .filter-spacer{flex:1;}
+
+  .table-wrap{flex:1;overflow:auto;border-radius:10px;border:1px solid var(--glass-border);background:rgba(0,0,0,0.18);}
+  .table-wrap::-webkit-scrollbar{width:8px;height:8px;}
+  .table-wrap::-webkit-scrollbar-thumb{background:rgba(180,200,255,0.25);border-radius:4px;}
+
+  .records-table{width:100%;border-collapse:collapse;min-width:980px;}
+  .records-table thead th{
+    position:sticky;top:0;z-index:1;
+    background:linear-gradient(180deg,rgba(20,25,55,0.98),rgba(15,20,45,0.95));
+    backdrop-filter:blur(10px);
+    color:var(--text-2);font-family:var(--font-display);font-size:10px;letter-spacing:2px;
+    font-weight:600;text-transform:uppercase;text-align:left;
+    padding:12px 10px;border-bottom:1px solid var(--glass-border-strong);
+    cursor:pointer;user-select:none;white-space:nowrap;
+  }
+  .records-table thead th:hover{color:var(--accent-cyan);}
+  .records-table thead th .sort-ind{display:inline-block;margin-left:4px;opacity:0.4;font-size:10px;}
+  .records-table thead th.sort-asc .sort-ind,
+  .records-table thead th.sort-desc .sort-ind{opacity:1;color:var(--accent-cyan);}
+  .records-table tbody tr{
+    border-bottom:1px solid rgba(180,200,255,0.06);
+    transition:background 0.15s;cursor:pointer;
+  }
+  .records-table tbody tr:hover{background:rgba(125,249,255,0.06);}
+  .records-table tbody td{
+    padding:11px 10px;font-size:12px;color:var(--text-1);
+    white-space:nowrap;font-family:var(--font-body);
+  }
+  .records-table tbody td.mono{font-family:'Consolas','Menlo',monospace;color:var(--text-2);font-size:11px;}
+  .records-table tbody td.amt{font-family:var(--font-display);color:var(--success);font-weight:700;text-align:right;}
+  .records-table tbody td .pill{
+    display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-family:var(--font-display);letter-spacing:1px;
+  }
+  .records-table tbody td .pill.maya{background:rgba(125,255,176,0.15);color:var(--success);border:1px solid rgba(125,255,176,0.3);}
+  .records-table tbody td .pill.gcash{background:rgba(56,163,255,0.18);color:var(--accent-blue);border:1px solid rgba(56,163,255,0.35);}
+  .records-table tbody td .pill.bank{background:rgba(179,136,255,0.18);color:var(--accent-violet);border:1px solid rgba(179,136,255,0.35);}
+  .records-table tbody td .pill.other{background:rgba(180,200,255,0.1);color:var(--text-2);border:1px solid var(--glass-border);}
+  .records-table tbody td .form-pill{
+    display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-family:var(--font-display);letter-spacing:1px;
+    background:linear-gradient(135deg,rgba(125,249,255,0.18),rgba(179,136,255,0.18));
+    border:1px solid var(--glass-border-strong);color:var(--text-1);
+  }
+  .records-empty{
+    text-align:center;padding:60px 20px;color:var(--text-3);font-size:13px;
+  }
+  .records-empty .empty-icon{font-size:48px;margin-bottom:12px;opacity:0.4;}
+
+  .records-footer{
+    display:flex;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap;gap:10px;
+  }
+  .records-footer .row-count{font-family:var(--font-display);font-size:11px;letter-spacing:2px;color:var(--text-3);text-transform:uppercase;}
+
+  /* Saved-payment line in list */
+  .payment-line{
+    margin-top:8px;padding-top:8px;border-top:1px dashed rgba(180,200,255,0.15);
+    font-family:var(--font-display);font-size:10px;letter-spacing:1.5px;
+    color:var(--text-2);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;
+  }
+  .payment-line .amt{color:var(--success);font-weight:700;}
+  .payment-line .ref{color:var(--accent-cyan);}
+  .payment-line .method{
+    padding:2px 8px;border-radius:4px;background:rgba(125,255,176,0.15);
+    color:var(--success);border:1px solid rgba(125,255,176,0.3);font-size:9px;
+  }
+
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+
+  /* ------------ REMINDER POPUP (special) ------------- */
+  .reminder-popup{
+    max-width:480px;
+    background:linear-gradient(135deg,rgba(40,20,60,0.95),rgba(10,13,34,0.95));
+    border-color:var(--accent-pink);
+    box-shadow:0 0 80px rgba(255,122,217,0.5), 0 0 140px rgba(179,136,255,0.3);
+    animation:modalIn 0.4s cubic-bezier(0.18,1.25,0.4,1), urgentPulse 2s ease-in-out infinite;
+  }
+  @keyframes urgentPulse{
+    0%,100%{box-shadow:0 0 80px rgba(255,122,217,0.5), 0 0 140px rgba(179,136,255,0.3);}
+    50%{box-shadow:0 0 100px rgba(255,122,217,0.7), 0 0 180px rgba(179,136,255,0.5);}
+  }
+  .reminder-icon{
+    width:70px;height:70px;border-radius:50%;margin:0 auto 16px;
+    background:radial-gradient(circle,rgba(255,122,217,0.4),rgba(179,136,255,0.2));
+    border:2px solid var(--accent-pink);
+    display:grid;place-items:center;
+    box-shadow:0 0 30px rgba(255,122,217,0.6);
+    animation:bellShake 1.5s ease-in-out infinite;
+  }
+  @keyframes bellShake{
+    0%,100%{transform:rotate(0deg);}
+    20%{transform:rotate(-10deg);}
+    40%{transform:rotate(10deg);}
+    60%{transform:rotate(-6deg);}
+    80%{transform:rotate(6deg);}
+  }
+  .reminder-popup .modal-title{text-align:center;font-size:22px;}
+  .reminder-popup .modal-sub{text-align:center;color:var(--accent-pink);}
+  .reminder-detail{
+    background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);
+    border-radius:12px;padding:16px;margin:16px 0;
+  }
+  .reminder-detail h3{font-family:var(--font-display);font-size:16px;margin-bottom:8px;}
+  .reminder-detail p{color:var(--text-2);font-size:13px;line-height:1.6;}
+  .reminder-detail .when{font-family:var(--font-display);font-size:11px;letter-spacing:2px;color:var(--accent-cyan);margin-top:10px;}
+
+  /* ------------ COMPLETION FORM ------------- */
+  .status-toggle{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  .status-toggle button{
+    padding:14px;border-radius:10px;cursor:pointer;
+    background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);
+    color:var(--text-2);font-family:var(--font-display);letter-spacing:2px;font-size:12px;
+    text-transform:uppercase;transition:all 0.2s;
+  }
+  .status-toggle button.active.complete{
+    background:rgba(125,255,176,0.15);border-color:var(--success);color:var(--success);
+    box-shadow:0 0 16px rgba(125,255,176,0.4);
+  }
+  .status-toggle button.active.incomplete{
+    background:rgba(255,107,138,0.15);border-color:var(--danger);color:var(--danger);
+    box-shadow:0 0 16px rgba(255,107,138,0.4);
+  }
+
+  .close-x{
+    position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;
+    background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);
+    color:var(--text-2);cursor:pointer;display:grid;place-items:center;
+    z-index:2;transition:all 0.2s;
+  }
+  .close-x:hover{color:var(--danger);border-color:var(--danger);}
+
+  .toast{
+    position:fixed;bottom:30px;left:50%;transform:translateX(-50%);
+    background:rgba(10,13,34,0.95);border:1px solid var(--accent-cyan);
+    color:var(--text-1);padding:14px 22px;border-radius:12px;
+    font-family:var(--font-display);font-size:12px;letter-spacing:2px;text-transform:uppercase;
+    box-shadow:0 0 30px rgba(125,249,255,0.4);
+    z-index:200;opacity:0;pointer-events:none;transition:all 0.3s;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-8px);}
+
+</style>
+</head>
+<body>
+
+<div class="particles" id="particles"></div>
+
+<div class="app">
+
+  <!-- ====== HEADER ====== -->
+  <header class="hero">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="#7df9ff" stroke-width="1.5"/>
+          <path d="M12 7v5l3 2" stroke="#b388ff" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <h1>CHRONOS</h1>
+        <small id="brandSub">BIR TAX FILING TRACKER // PERSONAL EDITION</small>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn" id="setupBtn" title="Scan BIR Certificate to set up deadlines">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Setup
+      </button>
+      <button class="btn" id="recordsBtn" title="View all completed payment records">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>
+        Records
+      </button>
+      <button class="btn" id="demoBtn" title="Trigger a reminder popup now">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Demo
+      </button>
+      <button class="btn primary" id="addBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        New Deadline
+      </button>
+    </div>
+  </header>
+
+  <!-- ====== STATUS STRIP ====== -->
+  <div class="status-strip">
+    <div class="stat-card"><div class="stat-label">Active Deadlines</div><div class="stat-value cyan" id="stat-active">0</div></div>
+    <div class="stat-card"><div class="stat-label">Due Today</div><div class="stat-value violet" id="stat-today">0</div></div>
+    <div class="stat-card"><div class="stat-label">Overdue</div><div class="stat-value pink" id="stat-overdue">0</div></div>
+    <div class="stat-card"><div class="stat-label">Completed</div><div class="stat-value success" id="stat-completed">0</div></div>
+  </div>
+
+  <!-- ====== MAIN GRID ====== -->
+  <div class="main-grid">
+
+    <!-- Calendar -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span class="pulse"></span>TEMPORAL GRID</div>
+        <div class="cal-nav">
+          <button id="prevMonth">‹</button>
+          <div class="cal-month" id="calMonth">— —</div>
+          <button id="nextMonth">›</button>
+        </div>
+      </div>
+      <div class="cal-weekdays">
+        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+
+    <!-- Sidebar list -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span class="pulse"></span><span id="listTitle">DEADLINES</span></div>
+      </div>
+      <div class="deadline-list" id="deadlineList"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ====== ADD/EDIT DEADLINE MODAL ====== -->
+<div class="modal-backdrop" id="addModal">
+  <div class="modal">
+    <button class="close-x" data-close="addModal">✕</button>
+    <div class="modal-title">New Deadline</div>
+    <div class="modal-sub">Initialize temporal anchor</div>
+    <form id="addForm">
+      <div class="form-row">
+        <label>Title</label>
+        <input type="text" id="f-title" required placeholder="e.g. Submit project report"/>
+      </div>
+      <div class="form-row row-2">
+        <div>
+          <label>Date</label>
+          <input type="date" id="f-date" required/>
+        </div>
+        <div>
+          <label>Time</label>
+          <input type="time" id="f-time" required value="09:00"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Description</label>
+        <textarea id="f-desc" placeholder="Additional notes (optional)"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn" data-close="addModal">Cancel</button>
+        <button type="submit" class="btn primary">Save Deadline</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ====== REMINDER POPUP ====== -->
+<div class="modal-backdrop" id="reminderModal">
+  <div class="modal reminder-popup">
+    <button class="close-x" data-close="reminderModal">✕</button>
+    <div class="reminder-icon">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ff7ad9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+      </svg>
+    </div>
+    <div class="modal-title">⚡ Deadline Reached</div>
+    <div class="modal-sub">Action Required</div>
+    <div class="reminder-detail" id="reminderDetail">
+      <h3>—</h3>
+      <p>—</p>
+      <div class="when">—</div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn" data-close="reminderModal">Dismiss</button>
+      <button type="button" class="btn primary" id="openLogBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Log Status →
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== BIR PAYMENT RECORD MODAL ====== -->
+<div class="modal-backdrop" id="logModal">
+  <div class="modal modal-wide">
+    <button class="close-x" data-close="logModal">✕</button>
+    <div class="modal-title">Record BIR Payment</div>
+    <div class="modal-sub" id="logSub">Logging payment for deadline</div>
+    <form id="logForm">
+
+      <!-- SCAN RECEIPT -->
+      <div class="scan-section">
+        <div class="scan-banner">
+          <div class="scan-info">
+            <strong>📸 SCAN RECEIPT</strong>
+            <small>Snap a photo of your Maya BIR receipt or upload a screenshot — all fields auto-fill instantly.</small>
+          </div>
+          <label class="btn primary scan-btn" for="receiptScan">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            Scan
+          </label>
+          <input type="file" id="receiptScan" accept="image/*" capture="environment" hidden/>
+        </div>
+        <div class="scan-progress" id="scanProgress" hidden>
+          <img class="scan-preview" id="scanPreview" alt="receipt preview"/>
+          <div class="scan-info-block">
+            <div class="scan-progress-bar"><div class="scan-progress-fill" id="scanProgressFill"></div></div>
+            <div class="scan-progress-text" id="scanProgressText">Initializing...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAXPAYER -->
+      <div class="form-section">
+        <div class="form-section-title">Taxpayer</div>
+        <div class="form-grid grid-3">
+          <div class="form-row">
+            <label>TIN</label>
+            <input type="text" id="logTin" required placeholder="000-000-000"/>
+          </div>
+          <div class="form-row">
+            <label>TIN Branch Code</label>
+            <input type="text" id="logBranch" placeholder="00000"/>
+          </div>
+          <div class="form-row">
+            <label>RDO Code</label>
+            <input type="text" id="logRdo" placeholder="074"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAYMENT -->
+      <div class="form-section">
+        <div class="form-section-title">Payment</div>
+        <div class="form-grid grid-2">
+          <div class="form-row">
+            <label>Date of Payment</label>
+            <input type="datetime-local" id="logDate" required/>
+          </div>
+          <div class="form-row">
+            <label>Amount Paid</label>
+            <div class="currency-input">
+              <input type="number" step="0.01" min="0" id="logAmount" placeholder="0.00" required/>
+            </div>
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:12px;">
+          <label>Payment Method</label>
+          <div class="pay-method-row">
+            <button type="button" class="pm-btn active maya" data-method="MAYA">Maya</button>
+            <button type="button" class="pm-btn" data-method="GCash">GCash</button>
+            <button type="button" class="pm-btn" data-method="Bank">Bank Transfer</button>
+            <button type="button" class="pm-btn" data-method="BIR Office">BIR Office</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- FORM DETAILS -->
+      <div class="form-section">
+        <div class="form-section-title">Form Details</div>
+        <div class="form-grid grid-3">
+          <div class="form-row">
+            <label>Form Type Code</label>
+            <input type="text" id="logFormType" placeholder="0619E"/>
+          </div>
+          <div class="form-row">
+            <label>Form Series</label>
+            <input type="text" id="logSeries" placeholder="0600 Series"/>
+          </div>
+          <div class="form-row">
+            <label>Tax Type</label>
+            <input type="text" id="logTaxType" placeholder="WE"/>
+          </div>
+        </div>
+        <div class="form-grid grid-2" style="margin-top:12px;">
+          <div class="form-row">
+            <label>Return Period</label>
+            <input type="date" id="logReturnPeriod"/>
+          </div>
+          <div class="form-row">
+            <label>Email</label>
+            <input type="email" id="logEmail" placeholder="you@example.com"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- RECEIPT -->
+      <div class="form-section">
+        <div class="form-section-title">Receipt</div>
+        <div class="form-grid grid-2">
+          <div class="form-row">
+            <label>Receipt No.</label>
+            <input type="text" id="logReceipt" placeholder="Ym2026..."/>
+          </div>
+          <div class="form-row">
+            <label>Reference ID</label>
+            <input type="text" id="logRefId" placeholder="0000 0000 0000"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- STATUS + NOTES -->
+      <div class="form-section">
+        <div class="form-section-title">Status & Notes</div>
+        <div class="form-row">
+          <label>Status</label>
+          <div class="status-toggle">
+            <button type="button" id="statusComplete" class="active complete" data-status="complete">✓ Completed</button>
+            <button type="button" id="statusIncomplete" data-status="incomplete">⏱ Pending</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Notes</label>
+          <textarea id="logNotes" placeholder="Optional notes" rows="2"></textarea>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn" data-close="logModal">Cancel</button>
+        <button type="submit" class="btn primary">Save Payment Record</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ====== WELCOME / ONBOARDING MODAL ====== -->
+<div class="modal-backdrop" id="welcomeModal">
+  <div class="modal welcome-modal">
+    <button class="close-x" data-close="welcomeModal">✕</button>
+    <div class="welcome-hero">
+      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#7df9ff" stroke-width="1.6">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 2v6h6"/>
+        <path d="M9 14l2 2 4-4"/>
+      </svg>
+    </div>
+    <div class="welcome-title">WELCOME TO CHRONOS</div>
+    <div class="welcome-greeting">
+      Your personal BIR filing deadline tracker. The fastest way to start:<br>
+      <strong style="color:var(--text-1);">snap a photo of your BIR Certificate of Registration</strong> and we'll automatically build your filing calendar.
+    </div>
+    <div class="welcome-actions">
+      <label class="btn scan-primary" for="corScanInput">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        Scan Your BIR Certificate
+      </label>
+      <input type="file" id="corScanInput" accept="image/*" hidden/>
+      <button type="button" class="btn" id="manualWelcomeBtn">📝 Pick Forms Manually Instead</button>
+      <button type="button" class="btn" id="skipWelcomeBtn">Skip — I'll add deadlines later</button>
+    </div>
+    <div class="welcome-note">📷 Works with photos OR screenshots · Auto-rotates sideways photos</div>
+    <div class="scan-progress" id="corScanProgress" hidden style="margin-top:14px;">
+      <img class="scan-preview" id="corPreview" alt="cert preview"/>
+      <div class="scan-info-block">
+        <div class="scan-progress-bar"><div class="scan-progress-fill" id="corProgressFill"></div></div>
+        <div class="scan-progress-text" id="corProgressText">Initializing...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== COR REVIEW MODAL (detected forms) ====== -->
+<div class="modal-backdrop" id="corReviewModal">
+  <div class="modal modal-wide">
+    <button class="close-x" data-close="corReviewModal">✕</button>
+    <div class="modal-title">📋 Confirm Detected Forms</div>
+    <div class="modal-sub" id="corReviewSub">Review the BIR forms we found in your certificate</div>
+    <div class="form-detect-header">
+      <div style="color:var(--text-2);font-size:12px;">Tap a row to include or exclude it.</div>
+      <div class="form-detect-year">
+        <label>For year</label>
+        <select id="corYearSelect"></select>
+      </div>
+    </div>
+    <div class="form-detect-list" id="corDetectList"></div>
+    <div class="detect-summary" id="corDetectSummary">Generating <strong>0</strong> deadlines</div>
+    <div class="modal-actions">
+      <button type="button" class="btn" data-close="corReviewModal">Cancel</button>
+      <button type="button" class="btn primary" id="corGenerateBtn">Generate Deadlines</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== PAYMENT RECORDS WINDOW ====== -->
+<div class="modal-backdrop" id="recordsModal">
+  <div class="modal modal-xl">
+    <button class="close-x" data-close="recordsModal">✕</button>
+    <div class="modal-title">📒 Payment Records</div>
+    <div class="modal-sub">Consolidated view of all completed BIR payments</div>
+
+    <!-- STATS -->
+    <div class="records-stats">
+      <div class="records-stat"><div class="rs-label">Total Records</div><div class="rs-value cyan" id="recs-total">0</div></div>
+      <div class="records-stat"><div class="rs-label">Total Paid</div><div class="rs-value success" id="recs-amount">₱0.00</div></div>
+      <div class="records-stat"><div class="rs-label">This Year</div><div class="rs-value violet" id="recs-year">₱0.00</div></div>
+      <div class="records-stat"><div class="rs-label">This Month</div><div class="rs-value pink" id="recs-month">₱0.00</div></div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="records-filters">
+      <input type="search" id="recsSearch" placeholder="Search TIN, receipt #, ref ID, form…"/>
+      <select id="recsFilterForm"><option value="">All Forms</option></select>
+      <select id="recsFilterMethod">
+        <option value="">All Methods</option>
+        <option value="MAYA">Maya</option>
+        <option value="GCash">GCash</option>
+        <option value="Bank">Bank</option>
+        <option value="BIR Office">BIR Office</option>
+      </select>
+      <select id="recsFilterYear"><option value="">All Years</option></select>
+      <button class="btn" id="exportCsvBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Export CSV
+      </button>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-wrap">
+      <table class="records-table" id="recordsTable">
+        <thead>
+          <tr>
+            <th data-sort="paidAt">Date Paid <span class="sort-ind">↕</span></th>
+            <th data-sort="formType">Form <span class="sort-ind">↕</span></th>
+            <th data-sort="returnPeriod">Period <span class="sort-ind">↕</span></th>
+            <th data-sort="tin">TIN <span class="sort-ind">↕</span></th>
+            <th data-sort="rdo">RDO <span class="sort-ind">↕</span></th>
+            <th data-sort="taxType">Tax <span class="sort-ind">↕</span></th>
+            <th data-sort="amount" style="text-align:right;">Amount <span class="sort-ind">↕</span></th>
+            <th data-sort="method">Method <span class="sort-ind">↕</span></th>
+            <th data-sort="receiptNo">Receipt No. <span class="sort-ind">↕</span></th>
+            <th data-sort="refId">Ref ID <span class="sort-ind">↕</span></th>
+          </tr>
+        </thead>
+        <tbody id="recordsBody"></tbody>
+      </table>
+    </div>
+
+    <div class="records-footer">
+      <div class="row-count" id="recsRowCount">0 records</div>
+      <button type="button" class="btn" data-close="recordsModal">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Saved</div>
+
+<script>
+/* ===================== DATA STATE ===================== */
+const state = {
+  deadlines: [],         // {id,title,desc,due (ISO),completed,reminded, payment:{...}}
+  currentMonth: new Date().getMonth(),
+  currentYear: new Date().getFullYear(),
+  activeReminderId: null,
+  logStatus: 'complete',
+  logMethod: 'MAYA',
+  // ---- Taxpayer profile (auto-saved as user fills in payments) ----
+  taxpayer: {
+    tin: '',
+    branchCode: '',
+    rdoCode: '',
+    email: '',
+  },
+};
+
+// Form-code → Series / Tax Type defaults (BIR convention)
+const FORM_DEFAULTS = {
+  '1701Q' : {series:'1700 Series', taxType:'IT'},
+  '1701'  : {series:'1700 Series', taxType:'IT'},
+  '1701A' : {series:'1700 Series', taxType:'IT'},
+  '1701MS': {series:'1700 Series', taxType:'IT'},
+  '2551Q' : {series:'2500 Series', taxType:'PT'},
+  '0619E' : {series:'0600 Series', taxType:'WE'},
+  '1601EQ': {series:'1600 Series', taxType:'WE'},
+  '1604E' : {series:'1600 Series', taxType:'WE'},
+};
+
+// Extract form code from deadline title (e.g. "BIR 0619E — May 2026 ..." → "0619E")
+function formCodeFromTitle(title){
+  const m = title.match(/BIR\s+([0-9]+[A-Z]*)/i);
+  return m ? m[1].toUpperCase() : '';
+}
+
+function formatPHP(n){
+  if(n===null||n===undefined||isNaN(n)) return '';
+  return '₱' + Number(n).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function toDateTimeInput(d){
+  const pad=x=>String(x).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// ====== BIR FORM RULES ======
+// Each registered BIR form defines its filing frequency and how to generate its annual deadlines.
+const BIR_FORM_RULES = {
+  '1701Q': {
+    name: 'Individual Income Tax (Quarterly)',
+    taxType: 'IT', series: '1700 Series', frequency: 'QUARTERLY',
+    rule: 'Q1→May 15 · Q2→Aug 15 · Q3→Nov 15',
+    generate: (year) => [
+      {label:'Q1', due:new Date(year, 4, 15, 17, 0)},   // May 15
+      {label:'Q2', due:new Date(year, 7, 15, 17, 0)},   // Aug 15
+      {label:'Q3', due:new Date(year,10, 15, 17, 0)},   // Nov 15
+    ],
+  },
+  '1701': {
+    name: 'Annual Individual Income Tax Return',
+    taxType: 'IT', series: '1700 Series', frequency: 'ANNUALLY',
+    rule: 'On or before April 15 of following year',
+    generate: (year) => [
+      {label:'Annual', due:new Date(year+1, 3, 15, 17, 0)}, // Apr 15 next year
+    ],
+  },
+  '1701A': {
+    name: 'Annual ITR — Pure compensation/8% option',
+    taxType: 'IT', series: '1700 Series', frequency: 'ANNUALLY',
+    rule: 'On or before April 15 of following year',
+    generate: (year) => [
+      {label:'Annual', due:new Date(year+1, 3, 15, 17, 0)},
+    ],
+  },
+  '1701MS': {
+    name: 'Annual ITR — Mixed income',
+    taxType: 'IT', series: '1700 Series', frequency: 'ANNUALLY',
+    rule: 'On or before April 15 of following year',
+    generate: (year) => [
+      {label:'Annual', due:new Date(year+1, 3, 15, 17, 0)},
+    ],
+  },
+  '2551Q': {
+    name: 'Quarterly Percentage Tax',
+    taxType: 'PT', series: '2500 Series', frequency: 'QUARTERLY',
+    rule: 'Within 25 days after end of quarter',
+    generate: (year) => [
+      {label:'Q1', due:new Date(year, 3, 25, 17, 0)},   // Apr 25
+      {label:'Q2', due:new Date(year, 6, 25, 17, 0)},   // Jul 25
+      {label:'Q3', due:new Date(year, 9, 25, 17, 0)},   // Oct 25
+      {label:'Q4', due:new Date(year+1, 0, 25, 17, 0)}, // Jan 25 next year
+    ],
+  },
+  '0619E': {
+    name: 'Monthly EWT Remittance',
+    taxType: 'WE', series: '0600 Series', frequency: 'MONTHLY',
+    rule: '10th of the following month',
+    generate: (year) => {
+      const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      return months.map((m, idx) => {
+        // Withholding made in month idx is remitted by 10th of (idx+1)
+        const dueMonth = idx + 1;
+        const dueYear = dueMonth > 11 ? year+1 : year;
+        const dueIdx  = dueMonth > 11 ? 0 : dueMonth;
+        return {label: m, due: new Date(dueYear, dueIdx, 10, 17, 0)};
+      });
+    },
+  },
+  '1601EQ': {
+    name: 'Quarterly EWT Return',
+    taxType: 'WE', series: '1600 Series', frequency: 'QUARTERLY',
+    rule: 'Last day of month following quarter end',
+    generate: (year) => [
+      {label:'Q1', due:new Date(year, 3, 30, 17, 0)},   // Apr 30
+      {label:'Q2', due:new Date(year, 6, 31, 17, 0)},   // Jul 31
+      {label:'Q3', due:new Date(year, 9, 31, 17, 0)},   // Oct 31
+      {label:'Q4', due:new Date(year+1, 0, 31, 17, 0)}, // Jan 31 next year
+    ],
+  },
+  '1604E': {
+    name: 'Annual EWT Information Return',
+    taxType: 'WE', series: '1600 Series', frequency: 'ANNUALLY',
+    rule: 'On or before March 1 of following year',
+    generate: (year) => [
+      {label:'Annual', due:new Date(year+1, 2, 1, 17, 0)}, // Mar 1 next year
+    ],
+  },
+  // VAT (extra common forms not in this user's COR but supported)
+  '2550Q': {
+    name: 'Quarterly VAT Return',
+    taxType: 'VT', series: '2500 Series', frequency: 'QUARTERLY',
+    rule: 'Within 25 days after end of quarter',
+    generate: (year) => [
+      {label:'Q1', due:new Date(year, 3, 25, 17, 0)},
+      {label:'Q2', due:new Date(year, 6, 25, 17, 0)},
+      {label:'Q3', due:new Date(year, 9, 25, 17, 0)},
+      {label:'Q4', due:new Date(year+1, 0, 25, 17, 0)},
+    ],
+  },
+  '1601C': {
+    name: 'Monthly Withholding Tax on Compensation',
+    taxType: 'WC', series: '1600 Series', frequency: 'MONTHLY',
+    rule: '10th of the following month',
+    generate: (year) => {
+      const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      return months.map((m, idx) => {
+        const dueMonth = idx + 1;
+        const dueYear = dueMonth > 11 ? year+1 : year;
+        const dueIdx  = dueMonth > 11 ? 0 : dueMonth;
+        return {label: m, due: new Date(dueYear, dueIdx, 10, 17, 0)};
+      });
+    },
+  },
+};
+
+// Initial state: empty. Onboarding or localStorage will populate.
+function seedDemo(){
+  // Empty by default. If users want to populate, they should use the Setup
+  // flow (scan their BIR Certificate of Registration).
+  state.deadlines = [];
+}
+
+function uid(){return Math.random().toString(36).slice(2,10);}
+
+/* ===================== PARTICLES ===================== */
+function makeParticles(){
+  const c = document.getElementById('particles');
+  for(let i=0;i<30;i++){
+    const s = document.createElement('span');
+    s.style.left = Math.random()*100 + '%';
+    s.style.animationDelay = (Math.random()*12) + 's';
+    s.style.animationDuration = (8 + Math.random()*12) + 's';
+    s.style.opacity = (0.2 + Math.random()*0.6);
+    c.appendChild(s);
+  }
+}
+
+/* ===================== CALENDAR ===================== */
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function renderCalendar(){
+  const grid = document.getElementById('calGrid');
+  const monthLabel = document.getElementById('calMonth');
+  monthLabel.textContent = MONTHS[state.currentMonth].toUpperCase() + ' ' + state.currentYear;
+  grid.innerHTML = '';
+
+  const firstOfMonth = new Date(state.currentYear, state.currentMonth, 1);
+  const lastOfMonth = new Date(state.currentYear, state.currentMonth+1, 0);
+  const startDay = firstOfMonth.getDay(); // 0 sun
+  const daysInMonth = lastOfMonth.getDate();
+
+  // Previous month tail
+  const prevLast = new Date(state.currentYear, state.currentMonth, 0).getDate();
+  for(let i=startDay-1;i>=0;i--){
+    grid.appendChild(makeDay(prevLast-i, true, state.currentMonth-1));
+  }
+  // This month
+  const today = new Date();
+  for(let d=1;d<=daysInMonth;d++){
+    const cell = makeDay(d, false, state.currentMonth);
+    const isToday = (today.getDate()===d && today.getMonth()===state.currentMonth && today.getFullYear()===state.currentYear);
+    if(isToday) cell.classList.add('today');
+    // Mark deadlines
+    const items = state.deadlines.filter(dl=>{
+      const dt = new Date(dl.due);
+      return dt.getFullYear()===state.currentYear && dt.getMonth()===state.currentMonth && dt.getDate()===d;
+    });
+    if(items.length){
+      cell.classList.add('has-deadline');
+      const anyOverdue = items.some(it => !it.completed && new Date(it.due) < today);
+      if(anyOverdue) cell.classList.add('overdue');
+      const counter = document.createElement('div');
+      counter.className = 'day-count';
+      counter.textContent = items.length + (items.length>1?' items':' item');
+      cell.appendChild(counter);
+    }
+    grid.appendChild(cell);
+  }
+  // Next month leading
+  const filled = startDay + daysInMonth;
+  const trailing = (7 - (filled % 7)) % 7;
+  for(let d=1;d<=trailing;d++){
+    grid.appendChild(makeDay(d, true, state.currentMonth+1));
+  }
+}
+
+function makeDay(num, muted, month){
+  const el = document.createElement('div');
+  el.className = 'cal-day' + (muted?' muted':'');
+  const n = document.createElement('div');
+  n.className = 'day-num';
+  n.textContent = num;
+  el.appendChild(n);
+  el.addEventListener('click',()=>{
+    // Pre-fill add modal with this date
+    const dateStr = toDateInput(new Date(state.currentYear, month, num));
+    document.getElementById('f-date').value = dateStr;
+    openModal('addModal');
+  });
+  return el;
+}
+
+function toDateInput(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+/* ===================== SIDEBAR LIST ===================== */
+function renderList(){
+  const list = document.getElementById('deadlineList');
+  const titleEl = document.getElementById('listTitle');
+  list.innerHTML='';
+  const now = new Date();
+
+  // Always show only the currently selected month from the calendar
+  titleEl.textContent = MONTHS[state.currentMonth].toUpperCase() + ' ' + state.currentYear;
+
+  const pool = state.deadlines.filter(dl => {
+    const dt = new Date(dl.due);
+    return dt.getFullYear() === state.currentYear && dt.getMonth() === state.currentMonth;
+  });
+
+  const sorted = pool.sort((a,b)=> new Date(a.due) - new Date(b.due));
+  if(!sorted.length){
+    list.innerHTML = `<div class="empty-state">No deadlines in ${MONTHS[state.currentMonth]} ${state.currentYear}.<br>Use ‹ › to browse other months.</div>`;
+    return;
+  }
+  sorted.forEach(dl=>{
+    const div = document.createElement('div');
+    div.className = 'deadline-item';
+    const due = new Date(dl.due);
+    const overdue = !dl.completed && due < now;
+    if(overdue) div.classList.add('overdue');
+    if(dl.completed) div.classList.add('completed');
+    const cd = countdownText(due, now);
+
+    // Payment line (if recorded)
+    let payHtml = '';
+    if(dl.payment){
+      const p = dl.payment;
+      payHtml = `
+        <div class="payment-line">
+          <span class="amt">${formatPHP(p.amount)}</span>
+          <span class="method">${escapeHtml(p.method||'')}</span>
+          ${p.refId ? `<span class="ref">REF ${escapeHtml(p.refId)}</span>` : ''}
+        </div>`;
+    }
+
+    div.innerHTML = `
+      <div class="deadline-title">${escapeHtml(dl.title)}</div>
+      <div class="deadline-meta">
+        ${formatDate(due)} · <span class="countdown ${overdue?'overdue':(cd.urgent?'urgent':'')}">${dl.completed?'✓ Completed':cd.text}</span>
+      </div>
+      ${payHtml}
+    `;
+    // Click: completed items open the log directly (to view/edit). Others show the reminder popup.
+    div.addEventListener('click',()=>{
+      if(dl.completed || dl.payment) openLogModal(dl.id);
+      else openReminder(dl.id, true);
+    });
+    list.appendChild(div);
+  });
+}
+
+function countdownText(due, now){
+  const diff = due - now;
+  const abs = Math.abs(diff);
+  const m = Math.floor(abs/60000);
+  const h = Math.floor(m/60);
+  const d = Math.floor(h/24);
+  let text='';
+  if(diff < 0){
+    if(d>0) text = `${d}d overdue`;
+    else if(h>0) text = `${h}h overdue`;
+    else text = `${m}m overdue`;
+  } else {
+    if(d>0) text = `in ${d}d ${h%24}h`;
+    else if(h>0) text = `in ${h}h ${m%60}m`;
+    else text = `in ${m}m`;
+  }
+  return {text, urgent: diff>=0 && diff < 24*3600*1000};
+}
+
+function formatDate(d){
+  return d.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}).toUpperCase();
+}
+function escapeHtml(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* ===================== STATS ===================== */
+function renderStats(){
+  const now = new Date();
+  const startToday = new Date(now); startToday.setHours(0,0,0,0);
+  const endToday = new Date(startToday); endToday.setDate(endToday.getDate()+1);
+  const active = state.deadlines.filter(d=>!d.completed);
+  const today = active.filter(d=>{const dt=new Date(d.due);return dt>=startToday && dt<endToday;});
+  const overdue = active.filter(d=> new Date(d.due) < now);
+  const completed = state.deadlines.filter(d=>d.completed);
+  document.getElementById('stat-active').textContent = active.length;
+  document.getElementById('stat-today').textContent = today.length;
+  document.getElementById('stat-overdue').textContent = overdue.length;
+  document.getElementById('stat-completed').textContent = completed.length;
+}
+
+/* ===================== MODAL HELPERS ===================== */
+function openModal(id){document.getElementById(id).classList.add('active');}
+function closeModal(id){document.getElementById(id).classList.remove('active');}
+document.querySelectorAll('[data-close]').forEach(btn=>{
+  btn.addEventListener('click',()=>closeModal(btn.dataset.close));
+});
+document.querySelectorAll('.modal-backdrop').forEach(bd=>{
+  bd.addEventListener('click',e=>{ if(e.target===bd) bd.classList.remove('active'); });
+});
+
+/* ===================== ADD FORM ===================== */
+document.getElementById('addBtn').addEventListener('click',()=>{
+  document.getElementById('addForm').reset();
+  document.getElementById('f-date').value = toDateInput(new Date());
+  document.getElementById('f-time').value = '09:00';
+  openModal('addModal');
+});
+
+document.getElementById('addForm').addEventListener('submit',(e)=>{
+  e.preventDefault();
+  const title = document.getElementById('f-title').value.trim();
+  const date = document.getElementById('f-date').value;
+  const time = document.getElementById('f-time').value;
+  const desc = document.getElementById('f-desc').value.trim();
+  const due = new Date(`${date}T${time}`).toISOString();
+  state.deadlines.push({id:uid(),title,desc,due,completed:false,reminded:false});
+  closeModal('addModal');
+  refresh();
+  toast('Deadline created');
+});
+
+/* ===================== REMINDER POPUP ===================== */
+function openReminder(id, manual=false){
+  const dl = state.deadlines.find(x=>x.id===id);
+  if(!dl) return;
+  state.activeReminderId = id;
+  const detail = document.getElementById('reminderDetail');
+  detail.querySelector('h3').textContent = dl.title;
+  detail.querySelector('p').textContent = dl.desc || 'No additional notes.';
+  detail.querySelector('.when').textContent = '⏱ ' + formatDate(new Date(dl.due));
+  openModal('reminderModal');
+  if(!manual){
+    // beep / chirp using WebAudio
+    try{ chirp(); }catch(e){}
+  }
+}
+
+function chirp(){
+  const ctx = new (window.AudioContext||window.webkitAudioContext)();
+  const o = ctx.createOscillator(); const g = ctx.createGain();
+  o.type='sine'; o.frequency.value=880;
+  g.gain.value=0.05;
+  o.connect(g); g.connect(ctx.destination);
+  o.start();
+  o.frequency.exponentialRampToValueAtTime(440, ctx.currentTime+0.3);
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.4);
+  o.stop(ctx.currentTime+0.45);
+}
+
+document.getElementById('openLogBtn').addEventListener('click',()=>{
+  closeModal('reminderModal');
+  openLogModal(state.activeReminderId);
+});
+
+function openLogModal(deadlineId){
+  const dl = state.deadlines.find(x=>x.id===deadlineId);
+  if(!dl) return;
+  state.activeReminderId = dl.id;
+  document.getElementById('logSub').textContent = 'Logging: ' + dl.title;
+
+  // Determine form-type defaults from title
+  const code = formCodeFromTitle(dl.title);
+  const defaults = FORM_DEFAULTS[code] || {series:'', taxType:''};
+  const existing = dl.payment || {};
+
+  // --- Taxpayer ---
+  document.getElementById('logTin').value       = existing.tin       ?? state.taxpayer.tin;
+  document.getElementById('logBranch').value    = existing.branch    ?? state.taxpayer.branchCode;
+  document.getElementById('logRdo').value       = existing.rdo       ?? state.taxpayer.rdoCode;
+
+  // --- Payment ---
+  const payDate = existing.paidAt ? new Date(existing.paidAt) : new Date();
+  document.getElementById('logDate').value      = toDateTimeInput(payDate);
+  document.getElementById('logAmount').value    = existing.amount ?? '';
+  setPayMethod(existing.method || 'MAYA');
+
+  // --- Form details ---
+  document.getElementById('logFormType').value     = existing.formType  ?? code;
+  document.getElementById('logSeries').value       = existing.series    ?? defaults.series;
+  document.getElementById('logTaxType').value      = existing.taxType   ?? defaults.taxType;
+  // Default return period: the deadline's due date (the period being paid for)
+  const rp = existing.returnPeriod ? new Date(existing.returnPeriod) : new Date(dl.due);
+  document.getElementById('logReturnPeriod').value = toDateInput(rp);
+  document.getElementById('logEmail').value        = existing.email     ?? state.taxpayer.email;
+
+  // --- Receipt ---
+  document.getElementById('logReceipt').value = existing.receiptNo ?? '';
+  document.getElementById('logRefId').value   = existing.refId     ?? '';
+
+  // --- Status + Notes ---
+  document.getElementById('logNotes').value = dl.notes || '';
+  setLogStatus(dl.completed ? 'complete' : 'complete');
+
+  openModal('logModal');
+}
+
+// Payment method toggle
+function setPayMethod(m){
+  state.logMethod = m;
+  document.querySelectorAll('.pm-btn').forEach(btn=>{
+    btn.classList.remove('active','maya');
+    if(btn.dataset.method === m){
+      btn.classList.add('active');
+      if(m === 'MAYA') btn.classList.add('maya');
+    }
+  });
+}
+document.querySelectorAll('.pm-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>setPayMethod(btn.dataset.method));
+});
+
+/* ===================== RECEIPT OCR (Tesseract.js) ===================== */
+const MONTHS_SHORT = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+let _tesseractLoaded = false;
+
+function loadTesseract(){
+  if(_tesseractLoaded && window.Tesseract) return Promise.resolve();
+  return new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload = () => { _tesseractLoaded = true; resolve(); };
+    s.onerror = () => reject(new Error('Failed to load OCR engine. Check your connection.'));
+    document.head.appendChild(s);
+  });
+}
+
+// Downscale large camera photos before OCR (much faster, accuracy still good).
+// CRITICAL: honor EXIF orientation, otherwise mobile-camera portrait photos
+// arrive sideways and Tesseract reads nothing.
+function downscaleImage(file, maxWidth=1400){
+  return new Promise(async (resolve, reject)=>{
+    try {
+      let source;
+      // Preferred path: createImageBitmap with imageOrientation:'from-image'
+      // applies EXIF rotation BEFORE we draw to canvas.
+      if(typeof createImageBitmap === 'function'){
+        try {
+          source = await createImageBitmap(file, {imageOrientation: 'from-image'});
+        } catch(e){
+          // Older Safari/Chrome don't accept the options object — try plain call.
+          // Many newer browsers also bake in EXIF by default now.
+          source = await createImageBitmap(file);
+        }
+      } else {
+        // Fallback for ancient browsers: <img> tag (usually does honor EXIF in modern browsers)
+        source = await new Promise((res, rej) => {
+          const img = new Image();
+          img.onload  = () => res(img);
+          img.onerror = rej;
+          img.src = URL.createObjectURL(file);
+        });
+      }
+      const srcW = source.width  || source.naturalWidth;
+      const srcH = source.height || source.naturalHeight;
+      const scale = Math.min(1, maxWidth / srcW);
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(srcW * scale);
+      canvas.height = Math.round(srcH * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+      if(source.close) source.close(); // free ImageBitmap memory
+      canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', 0.92);
+    } catch(err) {
+      reject(err);
+    }
+  });
+}
+
+document.getElementById('receiptScan').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  await scanReceipt(file);
+  e.target.value = ''; // allow re-selecting same file
+});
+
+async function scanReceipt(file){
+  const prog    = document.getElementById('scanProgress');
+  const fill    = document.getElementById('scanProgressFill');
+  const text    = document.getElementById('scanProgressText');
+  const preview = document.getElementById('scanPreview');
+
+  prog.hidden = false;
+  prog.classList.remove('success','error');
+  fill.style.width = '0%';
+  text.textContent = 'Loading OCR engine…';
+  preview.src = URL.createObjectURL(file);
+
+  try {
+    await loadTesseract();
+    text.textContent = 'Preparing image…';
+    const optimized = await downscaleImage(file);
+
+    text.textContent = 'Reading receipt…';
+    const result = await Tesseract.recognize(optimized, 'eng', {
+      logger: m => {
+        if(m.status === 'recognizing text'){
+          const pct = Math.round(m.progress * 100);
+          fill.style.width = pct + '%';
+          text.textContent = `Reading receipt… ${pct}%`;
+        }
+      }
+    });
+
+    const raw = result.data.text || '';
+    console.log('OCR raw text:\n', raw);
+    const extracted = parseReceiptText(raw);
+    const count = applyExtractedToForm(extracted);
+
+    fill.style.width = '100%';
+    prog.classList.add('success');
+    text.textContent = count > 0 ? `✓ Auto-filled ${count} field${count===1?'':'s'}` : '⚠ Couldn’t recognize fields — try a clearer photo';
+    toast(count > 0 ? `Receipt scanned · ${count} field${count===1?'':'s'} filled` : 'Scan complete · no fields matched');
+    setTimeout(()=>{ prog.hidden = true; }, 4000);
+  } catch(err) {
+    console.error('OCR error:', err);
+    prog.classList.add('error');
+    fill.style.width = '100%';
+    text.textContent = '✗ ' + (err.message || 'Scan failed');
+    toast('Scan failed — see console');
+  }
+}
+
+/* ===================== RECEIPT PARSER ===================== */
+function parseReceiptText(text){
+  const ex = {};
+  // Normalize whitespace for some matchers; keep raw for line-based ones
+  const flat = text.replace(/[ \t]+/g, ' ');
+
+  // Amount: "- ₱895.00" or "₱895.00" or "P 895.00"
+  let m = flat.match(/[-−]?\s*[₱P]\s*([\d]{1,3}(?:,\d{3})*\.\d{2})/);
+  if(m) ex.amount = parseFloat(m[1].replace(/,/g,''));
+
+  // TIN: 9-12 digit number, prefer one right after "Internal Revenue"
+  m = flat.match(/Internal\s*Revenue\s*\n?\s*(\d{9,12})/i);
+  if(!m) m = flat.match(/\b(\d{9})\b/); // fallback: any 9-digit
+  if(m) ex.tin = m[1];
+
+  // Date & time of payment: "May 11, 2026, 08:58 PM"
+  m = flat.match(/([A-Za-z]{3,9})\s+(\d{1,2}),\s*(\d{4})[,\s]+(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if(m){
+    const mo = MONTHS_SHORT[m[1].toLowerCase().slice(0,3)];
+    if(mo !== undefined){
+      let h = parseInt(m[4],10);
+      const ap = m[6].toUpperCase();
+      if(ap === 'PM' && h < 12) h += 12;
+      if(ap === 'AM' && h === 12) h = 0;
+      ex.paidAt = new Date(parseInt(m[3],10), mo, parseInt(m[2],10), h, parseInt(m[5],10)).toISOString();
+    }
+  }
+
+  // TIN Branch Code
+  m = flat.match(/TIN\s*Branch\s*Code[^\d]*(\d{3,6})/i);
+  if(m) ex.branch = m[1];
+
+  // Form Type Code (e.g. 0619E)
+  m = flat.match(/Form\s*Type\s*Code[^0-9A-Z]*([0-9]{3,4}[A-Z]{0,3})/i);
+  if(m) ex.formType = m[1].toUpperCase();
+
+  // Form Series (e.g. "0600 Series")
+  m = flat.match(/Form\s*Series[^0-9]*(\d{3,4}\s*Series)/i);
+  if(m) ex.series = m[1].replace(/\s+/g,' ').trim();
+
+  // RDO Code
+  m = flat.match(/RDO\s*Code[^\d]*(\d{2,4})/i);
+  if(m) ex.rdo = m[1];
+
+  // Tax Type (1-3 letters: WE, IT, PT, VT, etc.)
+  m = flat.match(/Tax\s*Type[^A-Z]*([A-Z]{1,3})\b/);
+  if(m) ex.taxType = m[1];
+
+  // Return Period: "Apr 30, 2026"
+  m = flat.match(/Return\s*Period[^A-Za-z]*([A-Za-z]{3,9})\s+(\d{1,2}),\s*(\d{4})/i);
+  if(m){
+    const mo = MONTHS_SHORT[m[1].toLowerCase().slice(0,3)];
+    if(mo !== undefined){
+      ex.returnPeriod = new Date(parseInt(m[3],10), mo, parseInt(m[2],10)).toISOString();
+    }
+  }
+
+  // Email
+  m = flat.match(/[\w.+\-]+@[\w-]+\.[A-Za-z]{2,}(?:\.[A-Za-z]{2,})?/);
+  if(m) ex.email = m[0].toLowerCase();
+
+  // Receipt No. (long alphanumeric, e.g. Ym202605112058613112844434)
+  m = flat.match(/Receipt\s*No\.?[\s:]*([A-Za-z0-9]{10,})/i);
+  if(m) ex.receiptNo = m[1];
+
+  // Reference ID: "6131 1284 4434"
+  m = flat.match(/Reference\s*ID[\s:]*([\d\s]{8,})/i);
+  if(m) ex.refId = m[1].replace(/\s+/g,' ').trim();
+
+  // Payment method detection
+  if(/\bmaya\b/i.test(text))       ex.method = 'MAYA';
+  else if(/gcash/i.test(text))     ex.method = 'GCash';
+  else if(/bank/i.test(text))      ex.method = 'Bank';
+
+  return ex;
+}
+
+function applyExtractedToForm(ex){
+  let count = 0;
+  const flash = (el) => {
+    if(!el) return;
+    el.classList.add('field-flash');
+    setTimeout(()=>el.classList.remove('field-flash'), 1600);
+  };
+  const setFld = (id, val) => {
+    if(val === undefined || val === null || val === '') return;
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.value = val;
+    flash(el);
+    count++;
+  };
+  setFld('logTin',     ex.tin);
+  setFld('logBranch',  ex.branch);
+  setFld('logRdo',     ex.rdo);
+  if(ex.paidAt){
+    const el = document.getElementById('logDate');
+    el.value = toDateTimeInput(new Date(ex.paidAt));
+    flash(el); count++;
+  }
+  if(ex.amount !== undefined && !isNaN(ex.amount)){
+    const el = document.getElementById('logAmount');
+    el.value = ex.amount.toFixed(2);
+    flash(el); count++;
+  }
+  if(ex.method){
+    setPayMethod(ex.method);
+    document.querySelectorAll('.pm-btn').forEach(b=>{
+      if(b.dataset.method === ex.method) flash(b);
+    });
+    count++;
+  }
+  setFld('logFormType', ex.formType);
+  setFld('logSeries',   ex.series);
+  setFld('logTaxType',  ex.taxType);
+  if(ex.returnPeriod){
+    const el = document.getElementById('logReturnPeriod');
+    el.value = toDateInput(new Date(ex.returnPeriod));
+    flash(el); count++;
+  }
+  setFld('logEmail',    ex.email);
+  setFld('logReceipt',  ex.receiptNo);
+  setFld('logRefId',    ex.refId);
+  return count;
+}
+
+/* ===================== DEMO BUTTON ===================== */
+document.getElementById('demoBtn').addEventListener('click',()=>{
+  // Find the most upcoming or overdue active item; else first
+  const active = state.deadlines.filter(d=>!d.completed);
+  let target = active.sort((a,b)=>Math.abs(new Date(a.due)-Date.now()) - Math.abs(new Date(b.due)-Date.now()))[0];
+  if(!target){
+    target = state.deadlines[0];
+  }
+  if(!target){
+    toast('Add a deadline first');
+    return;
+  }
+  openReminder(target.id, false);
+});
+
+/* ===================== LOG STATUS FORM ===================== */
+function setLogStatus(s){
+  state.logStatus = s;
+  const c = document.getElementById('statusComplete');
+  const i = document.getElementById('statusIncomplete');
+  c.classList.remove('active');
+  i.classList.remove('active');
+  if(s==='complete'){c.classList.add('active');}
+  else {i.classList.add('active','incomplete');}
+}
+document.getElementById('statusComplete').addEventListener('click',()=>setLogStatus('complete'));
+document.getElementById('statusIncomplete').addEventListener('click',()=>setLogStatus('incomplete'));
+
+document.getElementById('logForm').addEventListener('submit',(e)=>{
+  e.preventDefault();
+  const dl = state.deadlines.find(x=>x.id===state.activeReminderId);
+  if(!dl) return;
+
+  const paidAtVal = document.getElementById('logDate').value;
+  const rpVal     = document.getElementById('logReturnPeriod').value;
+
+  dl.payment = {
+    tin:          document.getElementById('logTin').value.trim(),
+    branch:       document.getElementById('logBranch').value.trim(),
+    rdo:          document.getElementById('logRdo').value.trim(),
+    paidAt:       paidAtVal ? new Date(paidAtVal).toISOString() : new Date().toISOString(),
+    amount:       parseFloat(document.getElementById('logAmount').value) || 0,
+    method:       state.logMethod,
+    formType:     document.getElementById('logFormType').value.trim(),
+    series:       document.getElementById('logSeries').value.trim(),
+    taxType:      document.getElementById('logTaxType').value.trim(),
+    returnPeriod: rpVal ? new Date(rpVal).toISOString() : null,
+    email:        document.getElementById('logEmail').value.trim(),
+    receiptNo:    document.getElementById('logReceipt').value.trim(),
+    refId:        document.getElementById('logRefId').value.trim(),
+  };
+  dl.notes     = document.getElementById('logNotes').value.trim();
+  dl.completed = (state.logStatus === 'complete');
+  dl.loggedAt  = new Date().toISOString();
+
+  // Persist taxpayer profile if fields were edited
+  state.taxpayer.tin        = dl.payment.tin        || state.taxpayer.tin;
+  state.taxpayer.branchCode = dl.payment.branch     || state.taxpayer.branchCode;
+  state.taxpayer.rdoCode    = dl.payment.rdo        || state.taxpayer.rdoCode;
+  state.taxpayer.email      = dl.payment.email      || state.taxpayer.email;
+
+  closeModal('logModal');
+  refresh();
+  toast(dl.completed
+    ? `Payment recorded · ${formatPHP(dl.payment.amount)} via ${dl.payment.method}`
+    : 'Saved as pending');
+});
+
+/* ===================== AUTO-REMINDER LOOP ===================== */
+function checkDueReminders(){
+  const now = new Date();
+  // any active backdrop already open? skip to avoid stacking
+  const someOpen = document.querySelector('.modal-backdrop.active');
+  if(someOpen) return;
+  for(const dl of state.deadlines){
+    if(dl.completed || dl.reminded) continue;
+    if(new Date(dl.due) <= now){
+      dl.reminded = true;
+      openReminder(dl.id, false);
+      refresh();
+      break; // one at a time
+    }
+  }
+}
+
+/* ===================== PAYMENT RECORDS WINDOW ===================== */
+const recsState = {
+  sortKey: 'paidAt',
+  sortDir: 'desc',
+  search: '',
+  filterForm: '',
+  filterMethod: '',
+  filterYear: '',
+};
+
+document.getElementById('recordsBtn').addEventListener('click', openRecordsModal);
+
+function openRecordsModal(){
+  populateRecordsFilters();
+  renderRecords();
+  openModal('recordsModal');
+}
+
+// Build form/year filter dropdowns from current data
+function populateRecordsFilters(){
+  const formSel = document.getElementById('recsFilterForm');
+  const yearSel = document.getElementById('recsFilterYear');
+  const forms = new Set();
+  const years = new Set();
+  state.deadlines.forEach(dl => {
+    if(!dl.payment) return;
+    if(dl.payment.formType) forms.add(dl.payment.formType);
+    if(dl.payment.paidAt){
+      const y = new Date(dl.payment.paidAt).getFullYear();
+      if(!isNaN(y)) years.add(y);
+    }
+  });
+  // Keep current selection if still valid
+  const prevForm = recsState.filterForm;
+  const prevYear = recsState.filterYear;
+  formSel.innerHTML = '<option value="">All Forms</option>' +
+    [...forms].sort().map(f => `<option value="${f}">${f}</option>`).join('');
+  yearSel.innerHTML = '<option value="">All Years</option>' +
+    [...years].sort((a,b)=>b-a).map(y => `<option value="${y}">${y}</option>`).join('');
+  formSel.value = prevForm;
+  yearSel.value = prevYear;
+}
+
+function getCompletedRecords(){
+  return state.deadlines
+    .filter(dl => dl.completed && dl.payment)
+    .map(dl => ({
+      deadlineId: dl.id,
+      title: dl.title,
+      paidAt:       dl.payment.paidAt,
+      formType:     dl.payment.formType || '',
+      returnPeriod: dl.payment.returnPeriod,
+      tin:          dl.payment.tin || '',
+      branch:       dl.payment.branch || '',
+      rdo:          dl.payment.rdo || '',
+      taxType:      dl.payment.taxType || '',
+      series:       dl.payment.series || '',
+      amount:       dl.payment.amount || 0,
+      method:       dl.payment.method || '',
+      receiptNo:    dl.payment.receiptNo || '',
+      refId:        dl.payment.refId || '',
+      email:        dl.payment.email || '',
+      notes:        dl.notes || '',
+    }));
+}
+
+function getFilteredRecords(){
+  let rows = getCompletedRecords();
+  const q = recsState.search.trim().toLowerCase();
+  if(q){
+    rows = rows.filter(r =>
+      [r.tin, r.receiptNo, r.refId, r.formType, r.title, r.taxType, r.rdo, r.branch, r.email]
+        .some(v => (v||'').toString().toLowerCase().includes(q))
+    );
+  }
+  if(recsState.filterForm)   rows = rows.filter(r => r.formType === recsState.filterForm);
+  if(recsState.filterMethod) rows = rows.filter(r => r.method === recsState.filterMethod);
+  if(recsState.filterYear){
+    rows = rows.filter(r => r.paidAt && new Date(r.paidAt).getFullYear() === parseInt(recsState.filterYear,10));
+  }
+  // Sort
+  const key = recsState.sortKey, dir = recsState.sortDir === 'asc' ? 1 : -1;
+  rows.sort((a,b)=>{
+    let av = a[key], bv = b[key];
+    if(key === 'paidAt' || key === 'returnPeriod'){
+      av = av ? new Date(av).getTime() : 0;
+      bv = bv ? new Date(bv).getTime() : 0;
+    } else if(key === 'amount'){
+      av = Number(av)||0; bv = Number(bv)||0;
+    } else {
+      av = (av||'').toString().toLowerCase();
+      bv = (bv||'').toString().toLowerCase();
+    }
+    if(av < bv) return -1*dir;
+    if(av > bv) return  1*dir;
+    return 0;
+  });
+  return rows;
+}
+
+function renderRecords(){
+  const tbody = document.getElementById('recordsBody');
+  const rows = getFilteredRecords();
+  const allCompleted = getCompletedRecords();
+
+  // Stats (always use ALL completed, not filtered, so user sees totals)
+  const now = new Date();
+  const totalAmt = allCompleted.reduce((s,r)=>s + (Number(r.amount)||0), 0);
+  const yearAmt  = allCompleted.filter(r => r.paidAt && new Date(r.paidAt).getFullYear()===now.getFullYear())
+                               .reduce((s,r)=>s + (Number(r.amount)||0), 0);
+  const monthAmt = allCompleted.filter(r => {
+    if(!r.paidAt) return false;
+    const d = new Date(r.paidAt);
+    return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
+  }).reduce((s,r)=>s + (Number(r.amount)||0), 0);
+
+  document.getElementById('recs-total').textContent  = allCompleted.length;
+  document.getElementById('recs-amount').textContent = formatPHP(totalAmt);
+  document.getElementById('recs-year').textContent   = formatPHP(yearAmt);
+  document.getElementById('recs-month').textContent  = formatPHP(monthAmt);
+
+  // Sort indicators
+  document.querySelectorAll('#recordsTable thead th').forEach(th => {
+    th.classList.remove('sort-asc','sort-desc');
+    const ind = th.querySelector('.sort-ind');
+    if(th.dataset.sort === recsState.sortKey){
+      th.classList.add(recsState.sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+      if(ind) ind.textContent = recsState.sortDir === 'asc' ? '▲' : '▼';
+    } else if(ind){
+      ind.textContent = '↕';
+    }
+  });
+
+  // Row count
+  document.getElementById('recsRowCount').textContent =
+    `${rows.length} of ${allCompleted.length} record${allCompleted.length===1?'':'s'}`;
+
+  // Body
+  if(!rows.length){
+    tbody.innerHTML = `<tr><td colspan="10"><div class="records-empty">
+      <div class="empty-icon">📭</div>
+      ${allCompleted.length===0
+        ? 'No completed payments yet.<br>Log a payment from a reminder to see it here.'
+        : 'No records match the current filters.'}
+    </div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    const paidStr = r.paidAt ? new Date(r.paidAt).toLocaleString('en-PH', {year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+    const periodStr = r.returnPeriod ? new Date(r.returnPeriod).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'2-digit'}) : '—';
+    const methodCls = (r.method||'other').toLowerCase().replace(/\s/g,'') === 'maya' ? 'maya'
+                    : (r.method||'').toLowerCase() === 'gcash' ? 'gcash'
+                    : (r.method||'').toLowerCase() === 'bank'  ? 'bank' : 'other';
+    return `
+      <tr data-id="${r.deadlineId}">
+        <td>${escapeHtml(paidStr)}</td>
+        <td><span class="form-pill">${escapeHtml(r.formType || '—')}</span></td>
+        <td>${escapeHtml(periodStr)}</td>
+        <td class="mono">${escapeHtml(r.tin || '—')}</td>
+        <td class="mono">${escapeHtml(r.rdo || '—')}</td>
+        <td class="mono">${escapeHtml(r.taxType || '—')}</td>
+        <td class="amt">${formatPHP(r.amount)}</td>
+        <td><span class="pill ${methodCls}">${escapeHtml(r.method || '—')}</span></td>
+        <td class="mono">${escapeHtml(r.receiptNo || '—')}</td>
+        <td class="mono">${escapeHtml(r.refId || '—')}</td>
+      </tr>`;
+  }).join('');
+
+  // Row click → open log modal for editing
+  tbody.querySelectorAll('tr[data-id]').forEach(tr => {
+    tr.addEventListener('click', () => {
+      closeModal('recordsModal');
+      openLogModal(tr.dataset.id);
+    });
+  });
+}
+
+// Sort handlers
+document.querySelectorAll('#recordsTable thead th').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.sort;
+    if(!key) return;
+    if(recsState.sortKey === key){
+      recsState.sortDir = recsState.sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      recsState.sortKey = key;
+      recsState.sortDir = (key === 'paidAt' || key === 'amount') ? 'desc' : 'asc';
+    }
+    renderRecords();
+  });
+});
+
+// Filter handlers
+document.getElementById('recsSearch').addEventListener('input', (e)=>{
+  recsState.search = e.target.value; renderRecords();
+});
+document.getElementById('recsFilterForm').addEventListener('change', (e)=>{
+  recsState.filterForm = e.target.value; renderRecords();
+});
+document.getElementById('recsFilterMethod').addEventListener('change', (e)=>{
+  recsState.filterMethod = e.target.value; renderRecords();
+});
+document.getElementById('recsFilterYear').addEventListener('change', (e)=>{
+  recsState.filterYear = e.target.value; renderRecords();
+});
+
+// CSV export of currently visible rows
+document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
+  const rows = getFilteredRecords();
+  if(!rows.length){ toast('Nothing to export'); return; }
+  const headers = ['Date Paid','Form Type','Form Series','Return Period','TIN','Branch','RDO','Tax Type','Amount','Method','Receipt No','Reference ID','Email','Title','Notes'];
+  const esc = (v) => {
+    const s = (v===null||v===undefined) ? '' : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+  };
+  const lines = [headers.join(',')];
+  rows.forEach(r => {
+    lines.push([
+      r.paidAt ? new Date(r.paidAt).toISOString() : '',
+      r.formType, r.series,
+      r.returnPeriod ? new Date(r.returnPeriod).toISOString().slice(0,10) : '',
+      r.tin, r.branch, r.rdo, r.taxType,
+      (Number(r.amount)||0).toFixed(2),
+      r.method, r.receiptNo, r.refId, r.email,
+      r.title, r.notes,
+    ].map(esc).join(','));
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `bir-payments-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  toast(`Exported ${rows.length} record${rows.length===1?'':'s'} to CSV`);
+});
+
+/* ===================== ONBOARDING / COR SCAN ===================== */
+const onboardingState = {
+  detected: [],   // array of {code, selected:true}
+  year: new Date().getFullYear(),
+};
+
+// Setup button — opens welcome modal anytime
+document.getElementById('setupBtn').addEventListener('click', ()=>{
+  openModal('welcomeModal');
+});
+
+// Skip button — closes welcome, marks user as onboarded so it doesn't reappear
+document.getElementById('skipWelcomeBtn').addEventListener('click', ()=>{
+  closeModal('welcomeModal');
+  markOnboarded();
+  toast('Setup skipped — use the ⚙ Setup button to scan later');
+});
+
+// Manual-picker button in the welcome screen — for users who prefer not to scan
+document.getElementById('manualWelcomeBtn').addEventListener('click', ()=>{
+  openManualPicker();
+});
+
+// COR scan input — fires when user picks a file/photo
+document.getElementById('corScanInput').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file){
+    console.warn('COR scan: no file selected');
+    return;
+  }
+  console.log('COR scan: file selected', {
+    name: file.name,
+    size: file.size,
+    type: file.type,
+    lastModified: file.lastModified ? new Date(file.lastModified).toISOString() : null,
+  });
+  // Sanity check: must look like an image
+  if(file.type && !file.type.startsWith('image/')){
+    toast('Please pick an image file (JPG, PNG, HEIC, etc.)');
+    console.warn('COR scan: rejected non-image file type:', file.type);
+    e.target.value = '';
+    return;
+  }
+  await scanCorImage(file);
+  e.target.value = ''; // allow re-selecting same file
+});
+
+async function scanCorImage(file){
+  const prog    = document.getElementById('corScanProgress');
+  const fill    = document.getElementById('corProgressFill');
+  const text    = document.getElementById('corProgressText');
+  const preview = document.getElementById('corPreview');
+
+  prog.hidden = false;
+  prog.classList.remove('success','error');
+  fill.style.width = '0%';
+  text.textContent = 'Loading OCR engine…';
+  preview.src = URL.createObjectURL(file);
+
+  try {
+    await loadTesseract();
+    text.textContent = 'Preparing image…';
+    // Higher resolution (2800 vs prior 2200) — after the contrast filter, smaller text
+    // tends to break up if we downscale too aggressively, so we keep more pixels.
+    const optimized = await downscaleImage(file, 2800);
+
+    text.textContent = 'Enhancing for OCR…';
+    // Preprocess (grayscale + watermark-killing contrast). Most BIR certificate
+    // photos benefit dramatically; clean photos still OCR fine after the filter.
+    let prepared;
+    try {
+      prepared = await preprocessForOcr(optimized);
+      console.log('COR scan: preprocessing applied');
+    } catch(prepErr){
+      console.warn('COR scan: preprocessing failed, falling back to raw:', prepErr);
+      prepared = optimized;
+    }
+
+    // The certificate might be photographed at any rotation (sideways/upside-down).
+    // Tesseract can't read sideways text reliably, so we try the most common
+    // orientations and keep whichever reads back the most BIR form codes.
+    // We stop early once we find a confident result (≥3 forms) to save time on phones.
+    const rotations = [0, 90, 270, 180];
+    let best = {raw:'', forms:[], rotation:0, ocrResult:null};
+
+    for (let i = 0; i < rotations.length; i++){
+      const angle = rotations[i];
+      const passLabel = i === 0
+        ? 'Reading certificate'
+        : `Retrying rotated ${angle}° (${i+1}/${rotations.length})`;
+      fill.style.width = '0%';
+      text.textContent = `${passLabel}…`;
+
+      const imageForOcr = angle === 0 ? prepared : await rotateImage(prepared, angle);
+
+      const result = await Tesseract.recognize(imageForOcr, 'eng', {
+        logger: m => {
+          if(m.status === 'recognizing text'){
+            const pct = Math.round(m.progress * 100);
+            fill.style.width = pct + '%';
+            text.textContent = `${passLabel}… ${pct}%`;
+          }
+        }
+      });
+
+      const raw = result.data.text || '';
+      const forms = parseCorText(raw);
+      console.log(`COR rotation ${angle}°: ${forms.length} form(s)`, forms);
+
+      if(forms.length > best.forms.length){
+        best = {raw, forms, rotation: angle, ocrResult: result.data};
+      }
+      // Confident enough — don't burn battery on the remaining rotations
+      if(best.forms.length >= 3) break;
+    }
+
+    // Last-ditch: if the contrast-boosted version found nothing across all rotations,
+    // try once more with the RAW (uncontrasted) image at 0°. Some photos with very
+    // light printing get over-erased by our contrast filter; the raw version saves them.
+    if(!best.forms.length){
+      console.log('COR scan: enhanced passes found nothing; trying raw image…');
+      fill.style.width = '0%';
+      text.textContent = 'Retrying with raw image…';
+      try {
+        const result = await Tesseract.recognize(optimized, 'eng', {
+          logger: m => {
+            if(m.status === 'recognizing text'){
+              const pct = Math.round(m.progress * 100);
+              fill.style.width = pct + '%';
+              text.textContent = `Retrying with raw image… ${pct}%`;
+            }
+          }
+        });
+        const raw = result.data.text || '';
+        const forms = parseCorText(raw);
+        console.log('COR raw-fallback found:', forms.length, 'form(s)');
+        if(forms.length > best.forms.length){
+          best = {raw, forms, rotation: 0, ocrResult: result.data};
+        }
+      } catch(e){ console.warn('Raw fallback failed:', e); }
+    }
+
+    // Once we've committed to an orientation, run the TABLE-AWARE parser to
+    // extract structured row data (frequency, start date, tax type name).
+    // Anchors on a "TAX TYPES" header for accuracy; falls back to whole-text
+    // scanning if no header is detected.
+    let tableRows = null;
+    let tableFound = false;
+    if(best.ocrResult){
+      const parsed = parseCorTable(best.ocrResult);
+      tableFound = parsed.tableFound;
+      if(parsed.rows.length){
+        tableRows = parsed.rows;
+        console.log('COR table parser found:', parsed.rows);
+      }
+    }
+
+    fill.style.width = '100%';
+    prog.classList.add('success');
+    if(!best.forms.length){
+      // Show a peek of what OCR actually read so the user can diagnose,
+      // AND offer the manual-picker fallback so they're never blocked.
+      const peek = (best.raw || '').replace(/\s+/g,' ').trim().slice(0, 140);
+      text.innerHTML = (peek
+          ? `⚠ No BIR forms found. OCR read: "${peek}${peek.length>=140?'…':''}"`
+          : '⚠ Couldn\u2019t read any text — try a brighter, sharper photo')
+        + ` <button type="button" id="manualPickBtn" class="link-btn">Pick forms manually →</button>`;
+      // Wire the manual-pick button
+      const mb = document.getElementById('manualPickBtn');
+      if(mb) mb.addEventListener('click', () => openManualPicker());
+      toast('No forms detected · you can pick manually');
+      return;
+    }
+    const rotNote = best.rotation ? ` · auto-rotated ${best.rotation}°` : '';
+    const tableNote = tableFound ? ' from TAX TYPES table' : '';
+    const formCount = (tableRows && tableRows.length) ? tableRows.length : best.forms.length;
+    text.textContent = `✓ Found ${formCount} form${formCount===1?'':'s'}${tableNote}${rotNote}`;
+    setTimeout(()=>{
+      closeModal('welcomeModal');
+      prog.hidden = true;
+      // Pass either structured rows (preferred) or plain codes (fallback)
+      openCorReview(tableRows && tableRows.length ? tableRows : best.forms);
+    }, 800);
+  } catch(err) {
+    console.error('COR scan error:', err);
+    prog.classList.add('error');
+    fill.style.width = '100%';
+    text.textContent = '✗ ' + (err.message || 'Scan failed');
+    toast('Scan failed — see console');
+  }
+}
+
+// Rotate an image blob by 90/180/270 degrees. Returns a new JPEG blob.
+// Used by the COR scanner to retry OCR at alternate orientations when the
+// original photo is sideways or upside-down.
+async function rotateImage(blob, degrees){
+  const img = await createImageBitmap(blob);
+  const canvas = document.createElement('canvas');
+  const swap = (degrees % 180) !== 0;
+  canvas.width  = swap ? img.height : img.width;
+  canvas.height = swap ? img.width  : img.height;
+  const ctx = canvas.getContext('2d');
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate(degrees * Math.PI / 180);
+  ctx.drawImage(img, -img.width / 2, -img.height / 2);
+  if(img.close) img.close();
+  return new Promise(resolve => canvas.toBlob(b => resolve(b || blob), 'image/jpeg', 0.92));
+}
+
+// Preprocess an image for OCR by:
+//  1. Converting to grayscale (Tesseract is grayscale internally anyway, and color noise
+//     from watermarks/security-print patterns just confuses the detector).
+//  2. Applying an aggressive S-curve contrast stretch that pushes light grays toward white
+//     (eliminating BIR "BUREAU OF INTERNAL REVENUE" watermarks underneath the table)
+//     and dark grays toward black (sharpening the actual form-code glyphs).
+//
+// Without this, OCR on a typical BIR Certificate of Registration picks up the watermark
+// text MORE than the real form codes, because the watermark covers more area.
+async function preprocessForOcr(blob){
+  const img = await createImageBitmap(blob);
+  const canvas = document.createElement('canvas');
+  canvas.width  = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  if(img.close) img.close();
+
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const px = data.data;
+
+  // Tunables. WHITE_FLOOR is the most important: any pixel lighter than this
+  // becomes pure white. BIR watermarks typically sit in the 180–230 range, so
+  // 185 cleans them out without eating the form-code text (which is usually <120).
+  const WHITE_FLOOR = 185;
+  const BLACK_CEIL  = 90;
+
+  for(let i = 0; i < px.length; i += 4){
+    // Luminance — standard Rec. 709 weights
+    const gray = (px[i] * 0.2126 + px[i+1] * 0.7152 + px[i+2] * 0.0722) | 0;
+    let v;
+    if(gray >= WHITE_FLOOR){
+      v = 255;                                  // watermark gone
+    } else if(gray <= BLACK_CEIL){
+      v = 0;                                    // text crisped
+    } else {
+      // Linear stretch of the midtones across the full 0–255 range
+      v = Math.round(((gray - BLACK_CEIL) / (WHITE_FLOOR - BLACK_CEIL)) * 255);
+    }
+    px[i] = px[i+1] = px[i+2] = v;
+    // alpha (px[i+3]) untouched
+  }
+  ctx.putImageData(data, 0, 0);
+  return new Promise(resolve => canvas.toBlob(b => resolve(b || blob), 'image/jpeg', 0.92));
+}
+
+// Detect BIR form codes in the OCR text from the COR table
+function parseCorText(text){
+  const t = normalizeOcrText(text);
+
+  const KNOWN = ['1701Q','1701A','1701MS','2551Q','0619E','1601EQ','1604E','2550Q','1601C','1701'];
+  // Order matters: longer first, so 1701Q is matched before plain 1701
+  const found = [];
+  for(const code of KNOWN){
+    // Allow whitespace, dots, commas, dashes, slashes between code characters
+    // (OCR commonly inserts these in table cells, e.g. "1701 / Q" or "1601-EQ")
+    const inner = code.split('').join('[\\s.,\\-/]*');
+    // Replace strict \b word boundaries with permissive lookarounds.
+    // (?:^|[^A-Z0-9])  =  start of string OR a non-alphanumeric character before
+    // (?![A-Z0-9])     =  must NOT be followed by another letter/digit
+    // This still prevents '1701' from matching inside '1701Q', because after
+    // '1701' the next char would be 'Q' (alphanumeric → lookahead fails).
+    const pattern = new RegExp('(?:^|[^A-Z0-9])' + inner + '(?![A-Z0-9])');
+    if(pattern.test(t) && !found.includes(code)) found.push(code);
+  }
+  return found;
+}
+
+// Normalize OCR text: uppercase + fix common OCR misreads in numeric runs.
+// Shared by parseCorText and parseCorTable so both apply the same corrections.
+function normalizeOcrText(text){
+  let t = (text || '').toUpperCase();
+  // O → 0 in numeric contexts ("17O1" → "1701")
+  t = t.replace(/(\d)\s*O\s*(\d)/g, '$10$2');
+  t = t.replace(/(\d)\s*O$/gm, '$10');
+  t = t.replace(/\bO(?=\d)/g, '0');
+  // I → 1 between digits
+  t = t.replace(/(\d)\s*I\s*(\d)/g, '$11$2');
+  // L → 1 between digits
+  t = t.replace(/(\d)\s*L\s*(\d)/g, '$11$2');
+  // S → 5 between digits
+  t = t.replace(/(\d)\s*S\s*(\d)/g, '$15$2');
+  return t;
+}
+
+// Table-aware COR parser. Anchors on a "TAX TYPES" / "FORM TYPES" header line,
+// then groups subsequent lines into ROWS via tax-type keyword anchors
+// (INDIVIDUAL / PERCENTAGE / WITHHOLDING / VALUE ADDED / REGISTRATION / COMPENSATION).
+// Each row's text gets scanned LEFT-TO-RIGHT for:
+//   - tax type name      (keyword → canonical name)
+//   - form code(s)       (e.g., "1701Q", or multiple like "1701/1701A/1701MS" in one cell)
+//   - filing start date  (e.g., "October 29, 2025"; tolerant of OCR cell interleaving)
+//   - filing frequency   (QUARTERLY / MONTHLY / ANNUALLY)
+//
+// Returns { tableFound, rows: [{code, frequency, startDate, taxTypeName}] }.
+// If no "TAX TYPES" anchor is detected OR no tax-type keywords found, falls back
+// to whole-text scanning so we still capture forms from atypical layouts.
+function parseCorTable(ocrResult){
+  const KNOWN = ['1701Q','1701A','1701MS','2551Q','0619E','1601EQ','1604E','2550Q','1601C','1701'];
+
+  // Prefer Tesseract's per-line output (more accurate line breaks than splitting on \n).
+  let rawLines;
+  if(Array.isArray(ocrResult.lines) && ocrResult.lines.length){
+    rawLines = ocrResult.lines.map(l => (l.text || '').trim()).filter(Boolean);
+  } else {
+    rawLines = (ocrResult.text || '').split('\n').map(t => t.trim()).filter(Boolean);
+  }
+  const lines = rawLines.map(normalizeOcrText);
+
+  // Find "TAX TYPES" / "FORM TYPES" header anchor
+  let tableStart = -1;
+  for(let i = 0; i < lines.length; i++){
+    if(/\bTAX\s*TYPES?\b/.test(lines[i]) || /\bFORM\s*TYPES?\b/.test(lines[i])){
+      tableStart = i;
+      break;
+    }
+  }
+  const startIdx = tableStart >= 0 ? tableStart + 1 : 0;
+
+  // Cluster lines into rows by tax-type keyword anchors.
+  // Each "row" runs from a tax-type keyword line until the next one (or end).
+  // The keyword MUST start the line (after optional whitespace/punctuation) —
+  // otherwise mid-line mentions like "which withholding was made" inside a
+  // due-date description would falsely split the row.
+  const TAX_KEYWORDS = /^[\s\W]*(?:INDIVIDUAL|PERCENTAGE|WITHHOLDING|VALUE\s*ADDED|VAT|REGISTRATION|COMPENSATION)\b/;
+  const rowStarts = [];
+  for(let i = startIdx; i < lines.length; i++){
+    if(TAX_KEYWORDS.test(lines[i])) rowStarts.push(i);
+  }
+
+  // If we have NO tax-type anchors, fall back to line-by-line code scanning.
+  // (Cert image too cropped, OCR misread keywords, etc.)
+  if(rowStarts.length === 0){
+    const fallbackCodes = parseCorText(lines.join('\n'));
+    return {
+      tableFound: tableStart >= 0,
+      rows: fallbackCodes.map(code => ({ code, frequency:null, startDate:null, taxTypeName:null, dueDateText:null })),
+    };
+  }
+  rowStarts.push(lines.length); // sentinel
+
+  const codeMatchers = KNOWN.map(code => ({
+    code,
+    re: new RegExp('(?:^|[^A-Z0-9])' + code.split('').join('[\\s.,\\-/]*') + '(?![A-Z0-9])')
+  }));
+
+  const MONTH = '(?:JAN(?:UARY)?|FEB(?:RUARY)?|MAR(?:CH)?|APR(?:IL)?|MAY|JUNE?|JULY?|AUG(?:UST)?|SEPT?(?:EMBER)?|OCT(?:OBER)?|NOV(?:EMBER)?|DEC(?:EMBER)?)';
+
+  const seenCodes = new Set();
+  const rows = [];
+
+  for(let r = 0; r < rowStarts.length - 1; r++){
+    const rowText = lines.slice(rowStarts[r], rowStarts[r+1]).join(' ');
+
+    // Form codes in this row (a cell can list several, like "1701/1701A/1701MS")
+    const rowCodes = [];
+    for(const {code, re} of codeMatchers){
+      if(re.test(rowText) && !rowCodes.includes(code)) rowCodes.push(code);
+    }
+    if(rowCodes.length === 0) continue;
+
+    const taxTypeName = detectTaxType(rowText);
+
+    // Frequency (single, canonical word)
+    let frequency = null;
+    const fmatch = rowText.match(/\b(QUARTERLY|MONTHLY|ANNUALLY|ANNUAL)\b/);
+    if(fmatch) frequency = fmatch[1] === 'ANNUAL' ? 'ANNUALLY' : fmatch[1];
+
+    // Start date — try strict "Month DD, YYYY" format first (no interleaved cells);
+    // fall back to loose form allowing up to ~100 chars between day and year
+    // (catches the common case where OCR reads "October 29, [other-cell-content] 2025").
+    let startDate = null;
+    const strictRe = new RegExp('(' + MONTH + ')\\.?\\s*(\\d{1,2})\\s*[,.]?\\s*(20\\d{2})');
+    const looseRe  = new RegExp('(' + MONTH + ')\\.?\\s*(\\d{1,2})[\\s\\S]{0,100}?\\b(20\\d{2})\\b');
+    const strict = rowText.match(strictRe);
+    if(strict){
+      startDate = `${capitalize(strict[1])} ${strict[2]}, ${strict[3]}`;
+    } else {
+      const loose = rowText.match(looseRe);
+      if(loose) startDate = `${capitalize(loose[1])} ${loose[2]}, ${loose[3]}`;
+    }
+
+    // Filing Due Date column — descriptive text that starts after the frequency
+    // keyword (e.g., "1st Quarter on or before MAY 15...", "Within twenty-five days...",
+    // "Not later than the last day of the month...", "On or before April 15...").
+    const dueDateText = extractDueDateText(rowText, fmatch);
+
+    for(const code of rowCodes){
+      if(seenCodes.has(code)) continue;
+      seenCodes.add(code);
+      rows.push({ code, frequency, startDate, taxTypeName, dueDateText });
+    }
+  }
+
+  return { tableFound: tableStart >= 0, rows };
+}
+
+// Pull the "Filing Due Date" column text out of a row's joined-line text.
+// Strategy: skip past the frequency keyword (everything before is the other 4
+// columns), then look for a known due-date-description anchor like "On or before"
+// or "Within ...". Clean up cell-content that got interleaved during OCR
+// (stray years from the start-date column, orphan "TAX" tokens from the
+// tax-type column). Cap length so the review modal doesn't get bulky.
+function extractDueDateText(rowText, freqMatch){
+  // Take everything after the frequency keyword
+  const startSearch = freqMatch ? (freqMatch.index + freqMatch[0].length) : 0;
+  let rest = rowText.slice(startSearch);
+
+  // Anchor on a known due-date-description starter
+  const DUE_START_RE = /\b(?:1\s*ST\b|2\s*ND\b|3\s*RD\b|4\s*TH\b|ON\s+OR\s+(?:BEFORE|AFTER)|WITHIN\s+\w+|NOT\s+LATER\s+THAN|EVERY\s+\w+|AT\s+THE\s+END|BEFORE\s+THE)/;
+  const dueMatch = rest.match(DUE_START_RE);
+  if(!dueMatch) return null;
+  let cleaned = rest.slice(dueMatch.index);
+
+  // Cleanup: remove cell content that got interleaved from other columns when
+  // OCR read multi-line cells. Wrapped cells dump fragments like the tax-type
+  // words, "EXPANDED/OTHERS", a stray year, a duplicate frequency keyword, or
+  // pieces of a multi-line form code ("01A/170", "1MS") into the middle of the
+  // due-date description.
+  //
+  // We intentionally do NOT remove "TAX", "WITHHOLDING", "INCOME", etc. as
+  // standalone words — these legitimately appear in due-date descriptions
+  // (e.g. "withholding was made", "income payments subject to expanded
+  // withholding taxes"). Surgical pattern removal beats keyword blacklists.
+  cleaned = cleaned
+    .replace(/\bEXPANDED\s*\/?\s*OTHERS?\b/g, '')              // wrapped tax-type cell
+    .replace(/\b20\d{2}\b/g, '')                               // stray start-date years
+    .replace(/\b(?:QUARTERLY|MONTHLY|ANNUALLY|ANNUAL)\b/g, '') // wrapped freq keyword
+    .replace(/\b\d+[A-Z]+\/\d+[A-Z]*\b/g, '')                  // slash-fragments "01A/170"
+    .replace(/\b\d+[A-Z]+\b/g, m =>                            // short fragments "1MS"
+      /(?:ST|ND|RD|TH)$/.test(m) ? m : '')                     //   keep ordinals "10TH"
+    .replace(/(\d\s+)TAX\s+(\d)/g, '$1$2')                     // "15 TAX 2025" → drop wrapped TAX
+    .replace(/\s+/g, ' ')                                      // collapse whitespace
+    .replace(/\s+([,.])/g, '$1')                               // tidy punctuation
+    .replace(/\.\s*\./g, '.')                                  // collapse double periods
+    .replace(/\s*\/\s*/g, ' ')                                 // bare leftover slashes
+    .replace(/\s+/g, ' ')                                      // re-collapse after substitutions
+    .trim();
+
+  // Cap length so the modal stays compact
+  if(cleaned.length > 220) cleaned = cleaned.slice(0, 217) + '…';
+
+  // Render in readable sentence case (source is uppercase from normalization)
+  cleaned = toSentenceCase(cleaned);
+
+  return cleaned || null;
+}
+
+// Lowercase everything then re-capitalize sentence starts, months, and ordinals
+// so the captured due-date text reads naturally instead of shouting in all caps.
+function toSentenceCase(text){
+  if(!text) return text;
+  let s = text.toLowerCase();
+  s = s.charAt(0).toUpperCase() + s.slice(1);
+  s = s.replace(/([.!?]\s+)([a-z])/g, (_, p, c) => p + c.toUpperCase());
+  s = s.replace(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/gi,
+    m => m.charAt(0).toUpperCase() + m.slice(1));
+  s = s.replace(/\b(\d+)(st|nd|rd|th)\b/g, (_, n, suf) => n + suf.toUpperCase());
+  return s;
+}
+
+// Detect the canonical tax-type name from a single row's text.
+// Returns the BIR-standard tax type or null if no recognized keyword present.
+function detectTaxType(text){
+  if(/\bINDIVIDUAL\b/.test(text))      return 'Individual Income Tax';
+  if(/\bPERCENTAGE\b/.test(text))      return 'Percentage Tax';
+  if(/\bWITHHOLDING\b/.test(text))     return 'Withholding Tax';
+  if(/\bVALUE\s*ADDED\b|\bVAT\b/.test(text)) return 'Value-Added Tax';
+  if(/\bREGISTRATION\b/.test(text))    return 'Registration Fee';
+  if(/\bCOMPENSATION\b/.test(text))    return 'Compensation';
+  return null;
+}
+
+function capitalize(s){
+  if(!s) return s;
+  s = s.toLowerCase();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// Open the review modal with checkboxes for each detected form
+// Open the review modal. Accepts either:
+//   • array of code strings  e.g. ['1701Q','2551Q','0619E']  (legacy / fallback)
+//   • array of row objects   e.g. [{code, frequency, startDate, taxTypeName}, ...]
+//                            (preferred — from table-aware parser)
+function openCorReview(detected){
+  onboardingState.detected = detected.map(item => {
+    if(typeof item === 'string') return { code: item, selected: true };
+    return { ...item, selected: true };
+  });
+  onboardingState.year = new Date().getFullYear();
+
+  // Populate year selector (current year + next 2)
+  const ySel = document.getElementById('corYearSelect');
+  const cy = new Date().getFullYear();
+  ySel.innerHTML = [cy, cy+1, cy+2].map(y =>
+    `<option value="${y}" ${y===onboardingState.year?'selected':''}>${y}</option>`
+  ).join('');
+  ySel.onchange = (e) => { onboardingState.year = parseInt(e.target.value,10); renderCorReview(); };
+
+  // Update modal copy based on what we have to show
+  const sub = document.getElementById('corReviewSub');
+  if(sub){
+    const hasMeta = onboardingState.detected.some(d => d.startDate || d.frequency || d.taxTypeName);
+    if(!detected.length){
+      sub.textContent = 'Pick the BIR forms shown in your Certificate of Registration';
+    } else if(hasMeta){
+      sub.textContent = 'Captured from the TAX TYPES table — tap any row to include/exclude';
+    } else {
+      sub.textContent = 'Review the BIR forms we found in your certificate';
+    }
+  }
+
+  renderCorReview();
+  openModal('corReviewModal');
+}
+
+// Manual fallback — opens the review modal pre-loaded with every known BIR form
+// in an UNSELECTED state, so the user can tick the ones on their certificate.
+// Used when OCR fails entirely, or via a button in the welcome screen.
+function openManualPicker(){
+  closeModal('welcomeModal');
+  const allCodes = Object.keys(BIR_FORM_RULES);
+  onboardingState.detected = allCodes.map(code => ({code, selected:false}));
+  onboardingState.year = new Date().getFullYear();
+  const ySel = document.getElementById('corYearSelect');
+  const cy = new Date().getFullYear();
+  ySel.innerHTML = [cy, cy+1, cy+2].map(y =>
+    `<option value="${y}" ${y===onboardingState.year?'selected':''}>${y}</option>`
+  ).join('');
+  ySel.onchange = (e) => { onboardingState.year = parseInt(e.target.value,10); renderCorReview(); };
+  const sub = document.getElementById('corReviewSub');
+  if(sub) sub.textContent = 'Pick the BIR forms shown in your Certificate of Registration';
+  renderCorReview();
+  openModal('corReviewModal');
+}
+
+function renderCorReview(){
+  const list = document.getElementById('corDetectList');
+  const summary = document.getElementById('corDetectSummary');
+  list.innerHTML = '';
+
+  let totalDeadlines = 0;
+
+  onboardingState.detected.forEach((item, idx) => {
+    const rule = BIR_FORM_RULES[item.code];
+    if(!rule) return;
+    const deadlines = rule.generate(onboardingState.year);
+    if(item.selected) totalDeadlines += deadlines.length;
+
+    // Detect a frequency mismatch between what OCR read on the cert vs the
+    // canonical rule for this form code. A mismatch is usually an OCR misread
+    // (e.g., row text got jumbled), not a real conflict — but worth flagging.
+    let mismatchPill = '';
+    if(item.frequency && item.frequency.toUpperCase() !== rule.frequency.toUpperCase()){
+      mismatchPill = `<span class="freq-mismatch" title="Cert read as ${item.frequency} but ${item.code} is ${rule.frequency}">⚠ ${item.frequency} on cert</span>`;
+    }
+
+    // Captured-from-table metadata line (tax type · start date)
+    const metaBits = [];
+    if(item.taxTypeName) metaBits.push(item.taxTypeName);
+    if(item.startDate)   metaBits.push(`since ${item.startDate}`);
+    const metaLine = metaBits.length
+      ? `<div class="form-detect-meta">📋 ${metaBits.join(' · ')}</div>`
+      : '';
+    // Captured Filing Due Date column text — proves the parser read the full row
+    const dueCaptured = item.dueDateText
+      ? `<div class="form-detect-meta form-detect-due">📅 Cert due rule: ${item.dueDateText}</div>`
+      : '';
+
+    const el = document.createElement('div');
+    el.className = 'form-detect-item' + (item.selected ? ' selected' : '');
+    el.innerHTML = `
+      <div class="form-detect-check">${item.selected?'✓':''}</div>
+      <div class="form-detect-body">
+        <div class="form-detect-code">
+          ${item.code}
+          <span class="freq-pill ${rule.frequency}">${rule.frequency}</span>
+          ${mismatchPill}
+        </div>
+        <div class="form-detect-name">${rule.name}</div>
+        ${metaLine}
+        ${dueCaptured}
+        <div class="form-detect-rule">${rule.rule}</div>
+      </div>
+      <div class="form-detect-count">
+        <strong>${deadlines.length}</strong>
+        deadline${deadlines.length===1?'':'s'}
+      </div>
+    `;
+    el.addEventListener('click', () => {
+      onboardingState.detected[idx].selected = !onboardingState.detected[idx].selected;
+      renderCorReview();
+    });
+    list.appendChild(el);
+  });
+
+  summary.innerHTML = `Will create <strong>${totalDeadlines}</strong> deadline${totalDeadlines===1?'':'s'} for <strong>${onboardingState.year}</strong>`;
+}
+
+// Generate deadlines from confirmed forms — merge into existing (no duplicates by title)
+document.getElementById('corGenerateBtn').addEventListener('click', () => {
+  const existingTitles = new Set(state.deadlines.map(d => d.title));
+  let added = 0;
+  onboardingState.detected.filter(d => d.selected).forEach(item => {
+    const rule = BIR_FORM_RULES[item.code];
+    if(!rule) return;
+    const deadlines = rule.generate(onboardingState.year);
+    deadlines.forEach(dl => {
+      const title = `BIR ${item.code} — ${dl.label} ${onboardingState.year} (${rule.name})`;
+      if(existingTitles.has(title)) return;
+      state.deadlines.push({
+        id: uid(),
+        title,
+        desc: `${rule.name}. ${rule.rule}.`,
+        due: dl.due.toISOString(),
+        completed: false,
+        reminded: false,
+        _formCode: item.code,
+      });
+      added++;
+    });
+  });
+
+  closeModal('corReviewModal');
+  markOnboarded();
+  refresh();
+  // Jump calendar to the month of the earliest new deadline if any
+  if(added > 0){
+    const upcoming = state.deadlines
+      .filter(d => !d.completed)
+      .map(d => new Date(d.due))
+      .filter(d => d >= new Date())
+      .sort((a,b)=>a-b)[0];
+    if(upcoming){
+      state.currentMonth = upcoming.getMonth();
+      state.currentYear = upcoming.getFullYear();
+      renderCalendar();
+      renderList();
+    }
+  }
+  toast(added > 0 ? `✓ ${added} deadline${added===1?'':'s'} added to your calendar` : 'No new deadlines added (all already exist)');
+});
+
+/* ===================== TOAST ===================== */
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+/* ===================== NAV ===================== */
+document.getElementById('prevMonth').addEventListener('click',()=>{
+  state.currentMonth--;
+  if(state.currentMonth<0){state.currentMonth=11;state.currentYear--;}
+  renderCalendar();
+  renderList();
+});
+document.getElementById('nextMonth').addEventListener('click',()=>{
+  state.currentMonth++;
+  if(state.currentMonth>11){state.currentMonth=0;state.currentYear++;}
+  renderCalendar();
+  renderList();
+});
+
+
+/* ===================== LOCALSTORAGE PERSISTENCE ===================== */
+const LS_KEY_DEADLINES = 'chronos.deadlines.v1';
+const LS_KEY_TAXPAYER  = 'chronos.taxpayer.v1';
+const LS_KEY_ONBOARDED = 'chronos.onboarded.v1';
+
+function saveState(){
+  try {
+    localStorage.setItem(LS_KEY_DEADLINES, JSON.stringify(state.deadlines));
+    localStorage.setItem(LS_KEY_TAXPAYER,  JSON.stringify(state.taxpayer));
+  } catch(e){ console.warn('Save failed:', e); }
+}
+
+function loadState(){
+  try {
+    const d = localStorage.getItem(LS_KEY_DEADLINES);
+    const t = localStorage.getItem(LS_KEY_TAXPAYER);
+    if(d){ const arr = JSON.parse(d); if(Array.isArray(arr)) state.deadlines = arr; }
+    if(t){ Object.assign(state.taxpayer, JSON.parse(t)); }
+    return localStorage.getItem(LS_KEY_ONBOARDED) === '1';
+  } catch(e){
+    console.warn('Load failed:', e);
+    return false;
+  }
+}
+
+function markOnboarded(){
+  try { localStorage.setItem(LS_KEY_ONBOARDED, '1'); } catch(e){}
+}
+
+/* ===================== INIT ===================== */
+function refresh(){
+  renderCalendar();
+  renderList();
+  renderStats();
+  saveState();
+}
+
+makeParticles();
+const wasOnboarded = loadState();
+if(state.deadlines.length === 0) seedDemo(); // empty initialization (no-op)
+refresh();
+// Show welcome modal whenever the calendar is empty. This way it appears for
+// genuinely-new users, AND for returning users who cleared their data or are
+// opening on a different device. The previous "only first time ever" rule
+// was confusing — once you'd done a scan, the welcome window never came back,
+// even if you wanted to redo setup or share the file with someone else.
+if(state.deadlines.length === 0){
+  setTimeout(()=>openModal('welcomeModal'), 400);
+}
+setInterval(checkDueReminders, 15000); // check every 15s
+setInterval(()=>{ renderList(); renderStats(); }, 60000); // refresh countdowns each minute
+
+</script>
+</body>
+</html>
