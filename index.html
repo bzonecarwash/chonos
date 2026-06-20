@@ -1881,8 +1881,10 @@ function parseReceiptText(text){
   // Normalize whitespace for some matchers; keep raw for line-based ones
   const flat = text.replace(/[ \t]+/g, ' ');
 
-  // Amount: "- ₱895.00" / "₱895.00" / "P 895.00" / "PHP 875.00"
-  let m = flat.match(/[-−]?\s*(?:₱|PHP|P)\s*([\d]{1,3}(?:,\d{3})*\.\d{2})/i);
+  // Amount: "- ₱895.00" / "₱895.00" / "P 895.00" / "PHP 875.00" / "₱875" (Maya, no decimals) / "₱1,250"
+  // Decimals are optional because Maya often displays whole-peso amounts without the .00 suffix.
+  // First digit group allows any length so non-comma-formatted amounts like "₱12750" still match.
+  let m = flat.match(/[-−]?\s*(?:₱|PHP|P)\s*([\d]+(?:,\d{3})*(?:\.\d{1,2})?)/i);
   if(m) ex.amount = parseFloat(m[1].replace(/,/g,''));
 
   // TIN: prefer explicit "TIN: 290090974" (UnionBank format); fall back to the
