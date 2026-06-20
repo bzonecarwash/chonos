@@ -469,6 +469,36 @@
   }
   .link-btn:hover{background:rgba(125,210,255,0.22);border-color:rgba(125,210,255,0.5);}
 
+  /* OCR diagnostic peek — toggle and panel showing raw Tesseract output, used
+     when a scan fails to capture fields so the user can share what was read. */
+  .scan-diag-toggle{
+    margin-top:6px;padding:4px 10px;
+    background:rgba(255,255,255,0.05);border:1px solid var(--glass-border);
+    color:var(--text-3);font-family:var(--font-display);font-size:10px;
+    letter-spacing:1px;border-radius:5px;cursor:pointer;align-self:flex-start;
+  }
+  .scan-diag-toggle:hover{background:rgba(255,255,255,0.10);color:var(--text-2);}
+  .scan-diag-panel{
+    margin-top:10px;padding:12px;border-radius:10px;
+    background:rgba(0,0,0,0.4);border:1px solid var(--glass-border);
+  }
+  .scan-diag-label{
+    font-family:var(--font-display);font-size:10px;letter-spacing:1.5px;
+    color:var(--text-3);text-transform:uppercase;margin-bottom:6px;
+  }
+  .scan-diag-text{
+    margin:0 0 8px 0;padding:8px;max-height:240px;overflow:auto;
+    background:rgba(0,0,0,0.5);border:1px solid var(--glass-border);border-radius:6px;
+    font-family:'Courier New',monospace;font-size:11px;line-height:1.4;
+    color:var(--text-2);white-space:pre-wrap;word-break:break-word;
+  }
+  .scan-diag-copy{
+    padding:6px 12px;background:rgba(125,210,255,0.12);border:1px solid rgba(125,210,255,0.3);
+    color:var(--accent);font-family:var(--font-display);font-size:10px;letter-spacing:1px;
+    border-radius:5px;cursor:pointer;
+  }
+  .scan-diag-copy:hover{background:rgba(125,210,255,0.22);}
+
   /* Auto-fill flash animation for fields */
   @keyframes fieldFlash{
     0%{box-shadow:0 0 0 4px rgba(125,255,176,0.5);background:rgba(125,255,176,0.18);}
@@ -1026,7 +1056,13 @@
           <div class="scan-info-block">
             <div class="scan-progress-bar"><div class="scan-progress-fill" id="scanProgressFill"></div></div>
             <div class="scan-progress-text" id="scanProgressText">Initializing...</div>
+            <button type="button" class="scan-diag-toggle" id="scanDiagToggle" hidden>🔍 Show OCR text</button>
           </div>
+        </div>
+        <div class="scan-diag-panel" id="scanDiagPanel" hidden>
+          <div class="scan-diag-label">Raw OCR output (what Tesseract read):</div>
+          <pre class="scan-diag-text" id="scanDiagText"></pre>
+          <button type="button" class="scan-diag-copy" id="scanDiagCopyBtn">📋 Copy text</button>
         </div>
       </div>
 
@@ -1858,14 +1894,52 @@ async function scanReceipt(file){
 
     const raw = result.data.text || '';
     console.log('OCR raw text:\n', raw);
+
+    // Stash raw text on the diagnostic panel so the user can inspect what Tesseract
+    // actually read — invaluable when fields aren't captured and we need to figure
+    // out whether the issue is OCR quality, a missing label pattern, or formatting.
+    const diagText = document.getElementById('scanDiagText');
+    const diagToggle = document.getElementById('scanDiagToggle');
+    const diagPanel = document.getElementById('scanDiagPanel');
+    diagText.textContent = raw || '(no text recognized)';
+    diagToggle.hidden = false;
+    diagPanel.hidden = true;
+    diagToggle.textContent = '🔍 Show OCR text';
+    diagToggle.onclick = () => {
+      const willShow = diagPanel.hidden;
+      diagPanel.hidden = !willShow;
+      diagToggle.textContent = willShow ? '🔼 Hide OCR text' : '🔍 Show OCR text';
+    };
+
     const extracted = parseReceiptText(raw);
     const count = applyExtractedToForm(extracted);
 
     fill.style.width = '100%';
     prog.classList.add('success');
-    text.textContent = count > 0 ? `✓ Auto-filled ${count} field${count===1?'':'s'}` : '⚠ Couldn’t recognize fields — try a clearer photo';
+    text.textContent = count > 0 ? `✓ Auto-filled ${count} field${count===1?'':'s'}` : '⚠ Couldn’t recognize fields — tap “Show OCR text” below to see what was read';
     toast(count > 0 ? `Receipt scanned · ${count} field${count===1?'':'s'} filled` : 'Scan complete · no fields matched');
-    setTimeout(()=>{ prog.hidden = true; }, 4000);
+    // Auto-hide ONLY when everything went well. If fewer than ~6 fields matched, keep
+    // the diagnostic panel visible so the user can inspect the raw OCR text.
+    if(count >= 6){
+      setTimeout(()=>{ prog.hidden = true; document.getElementById('scanDiagPanel').hidden = true; document.getElementById('scanDiagToggle').hidden = true; }, 4000);
+    }
+
+    // Copy button — lets the user share the raw OCR text easily so we can build patterns for it
+    const copyBtn = document.getElementById('scanDiagCopyBtn');
+    copyBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(raw);
+        copyBtn.textContent = '✓ Copied!';
+        setTimeout(()=> copyBtn.textContent = '📋 Copy text', 1800);
+      } catch(e){
+        // Clipboard API can fail on some mobile browsers; fall back to select-all
+        const tx = document.getElementById('scanDiagText');
+        const sel = window.getSelection(); sel.removeAllRanges();
+        const range = document.createRange(); range.selectNodeContents(tx); sel.addRange(range);
+        copyBtn.textContent = '✓ Selected — long-press to copy';
+        setTimeout(()=> copyBtn.textContent = '📋 Copy text', 2400);
+      }
+    };
   } catch(err) {
     console.error('OCR error:', err);
     prog.classList.add('error');
@@ -1881,10 +1955,22 @@ function parseReceiptText(text){
   // Normalize whitespace for some matchers; keep raw for line-based ones
   const flat = text.replace(/[ \t]+/g, ' ');
 
-  // Amount: "- ₱895.00" / "₱895.00" / "P 895.00" / "PHP 875.00" / "₱875" (Maya, no decimals) / "₱1,250"
-  // Decimals are optional because Maya often displays whole-peso amounts without the .00 suffix.
-  // First digit group allows any length so non-comma-formatted amounts like "₱12750" still match.
+  // Amount — try four progressively-looser patterns. Tesseract often mangles
+  // the ₱ symbol, dropping it entirely or reading it as B, P, £, or similar.
+  //
+  // Pattern A: currency-prefix + amount (₱875, ₱875.00, PHP 875, P 875)
   let m = flat.match(/[-−]?\s*(?:₱|PHP|P)\s*([\d]+(?:,\d{3})*(?:\.\d{1,2})?)/i);
+  // Pattern B: common OCR misreads of ₱ symbol (B, £, ¥, R, ⓟ)
+  if(!m) m = flat.match(/[-−]?\s*[B£¥Rⓟ]\s*([\d]+(?:,\d{3})*\.\d{2})/);
+  // Pattern C: "Amount Paid: 875" / "Amount: ₱875" / "Total Paid 875.00"
+  if(!m) m = flat.match(/(?:Amount(?:\s+Paid)?|Total(?:\s+Paid)?)\s*[:\s]\s*(?:₱|PHP|P|B|£)?\s*([\d]+(?:,\d{3})*(?:\.\d{1,2})?)/i);
+  // Pattern D: last resort — any standalone number with .dd decimal looks like money
+  // (only used when nothing else matched to avoid false positives from TINs/refs)
+  if(!m){
+    // Limit search to lines containing keywords associated with money to reduce risk
+    const moneyLine = flat.split('\n').find(l => /amount|total|paid|php|peso/i.test(l));
+    if(moneyLine) m = moneyLine.match(/([\d]+(?:,\d{3})*\.\d{2})/);
+  }
   if(m) ex.amount = parseFloat(m[1].replace(/,/g,''));
 
   // TIN: prefer explicit "TIN: 290090974" (UnionBank format); fall back to the
@@ -1966,8 +2052,14 @@ function parseReceiptText(text){
   // - Maya:     "Bill Reference Number 6131000098765" ← the SOLE ref on Maya receipts
   // - Maya old: "Reference ID: 6131 1284 4434"
   // - UnionBank:"BIR REF NO.: So20260610212306CB1781097786009"
+  //
+  // Each pattern below handles a common OCR-mangling of the label. Tesseract on
+  // mobile photos often produces variants like "Bill Reference No" (period
+  // dropped) or "BillReference Number" (whitespace dropped).
   m = flat.match(/Bills?\s*Reference\s*(?:Number|No\.?)[\s:]*([A-Za-z0-9]{6,})/i);
+  if(!m) m = flat.match(/Bills?\s*Ref(?:erence)?\.?\s*(?:Number|No\.?|ID)?[\s:]*([A-Za-z0-9]{6,})/i);
   if(!m) m = flat.match(/Reference\s*ID[\s:]*([\d\s]{8,})/i);
+  if(!m) m = flat.match(/Trans(?:action)?\s*(?:ID|Number|No\.?)[\s:]*([A-Za-z0-9]{6,})/i);
   if(m) ex.refId = m[1].replace(/\s+/g,' ').trim();
   if(!ex.refId){
     m = flat.match(/BIR\s*REF(?:ERENCE)?\s*(?:NO|NUMBER)?\.?[\s:]*([A-Za-z0-9]{15,})/i);
