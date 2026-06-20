@@ -1950,6 +1950,27 @@ async function scanReceipt(file){
 }
 
 /* ===================== RECEIPT PARSER ===================== */
+
+// Find the first "ref-shaped" value following a label. A ref-shaped value is an
+// alphanumeric token of 4+ chars containing at least one digit. The digit
+// requirement prevents OCR artifacts where the label's own words ("number",
+// "amount", "date") appear between the label and the actual value from being
+// captured as the value. Also handles GCash-style multi-token refs like
+// "6131 1284 4434" by concatenating subsequent space-separated digit groups.
+function findValueAfterLabel(text, labelRegex){
+  const lab = text.match(labelRegex);
+  if(!lab) return null;
+  const start = lab.index + lab[0].length;
+  const win = text.substring(start, start + 200);  // search at most 200 chars past the label
+  for(const tok of win.matchAll(/[A-Za-z0-9]{4,}/g)){
+    if(!/\d/.test(tok[0])) continue;     // skip word fragments like "number"
+    const afterTok = win.substring(tok.index + tok[0].length);
+    const cont = afterTok.match(/^(?:\s+\d{3,})+/);  // GCash continuation: " 1284 4434"
+    return cont ? (tok[0] + cont[0]).replace(/\s+/g, ' ').trim() : tok[0];
+  }
+  return null;
+}
+
 function parseReceiptText(text){
   const ex = {};
   // Normalize whitespace for some matchers; keep raw for line-based ones
@@ -2033,38 +2054,34 @@ function parseReceiptText(text){
 
   // Receipt No. (bank-side transaction ID):
   // - GCash:    "Receipt No. Ym202605..."
-  // - UnionBank:"Reference Number UB1096521" (at the very top of receipt)
-  // Maya is intentionally skipped here — Maya receipts show only ONE ref, labeled
+  // - UnionBank:"Reference Number UB1096521" (at top of receipt)
+  // Maya intentionally skipped — Maya receipts show only ONE ref, labeled
   // "Bill Reference Number", which is the BIR-side ref and belongs in refId below.
-  // The lookbehind on m.index makes sure "Reference Number" doesn't accidentally
-  // match the tail end of "Bill Reference Number".
-  m = flat.match(/Receipt\s*No\.?[\s:]*([A-Za-z0-9]{10,})/i);
-  if(!m){
-    const refNumMatch = flat.match(/Reference\s*Number[\s:]*([A-Z0-9]{6,})/i);
+  let rcpt = findValueAfterLabel(flat, /Receipt\s*No\.?/i);
+  if(!rcpt){
+    const refNumMatch = flat.match(/Reference\s*Number/i);
     if(refNumMatch && refNumMatch.index !== undefined){
       const before = flat.substring(Math.max(0, refNumMatch.index - 10), refNumMatch.index);
-      if(!/Bills?\s*$/i.test(before)) m = refNumMatch;  // accept only if NOT preceded by "Bill"/"Bills"
+      if(!/Bills?\s*$/i.test(before)) rcpt = findValueAfterLabel(flat, /Reference\s*Number/i);
     }
   }
-  if(m) ex.receiptNo = m[1];
+  if(rcpt) ex.receiptNo = rcpt;
 
   // Reference ID (BIR-side / sole transaction ref):
-  // - Maya:     "Bill Reference Number 6131000098765" ← the SOLE ref on Maya receipts
+  // - Maya:     "Bill Reference Number 6131000098765" (sole ref on Maya receipts)
   // - Maya old: "Reference ID: 6131 1284 4434"
   // - UnionBank:"BIR REF NO.: So20260610212306CB1781097786009"
   //
-  // Each pattern below handles a common OCR-mangling of the label. Tesseract on
-  // mobile photos often produces variants like "Bill Reference No" (period
-  // dropped) or "BillReference Number" (whitespace dropped).
-  m = flat.match(/Bills?\s*Reference\s*(?:Number|No\.?)[\s:]*([A-Za-z0-9]{6,})/i);
-  if(!m) m = flat.match(/Bills?\s*Ref(?:erence)?\.?\s*(?:Number|No\.?|ID)?[\s:]*([A-Za-z0-9]{6,})/i);
-  if(!m) m = flat.match(/Reference\s*ID[\s:]*([\d\s]{8,})/i);
-  if(!m) m = flat.match(/Trans(?:action)?\s*(?:ID|Number|No\.?)[\s:]*([A-Za-z0-9]{6,})/i);
-  if(m) ex.refId = m[1].replace(/\s+/g,' ').trim();
-  if(!ex.refId){
-    m = flat.match(/BIR\s*REF(?:ERENCE)?\s*(?:NO|NUMBER)?\.?[\s:]*([A-Za-z0-9]{15,})/i);
-    if(m) ex.refId = m[1];
-  }
+  // findValueAfterLabel skips non-digit tokens — without this, OCR producing
+  // text like "Bill Reference Number\nnumber 6131000098765" would capture the
+  // word "number" instead of the actual reference value.
+  ex.refId =
+    findValueAfterLabel(flat, /Bills?\s*Reference\s*(?:Number|No\.?)/i) ||
+    findValueAfterLabel(flat, /Bills?\s*Ref(?:erence)?\.?\s*(?:Number|No\.?|ID)?/i) ||
+    findValueAfterLabel(flat, /Reference\s*ID/i) ||
+    findValueAfterLabel(flat, /Trans(?:action)?\s*(?:ID|Number|No\.?)/i) ||
+    findValueAfterLabel(flat, /BIR\s*REF(?:ERENCE)?\s*(?:NO|NUMBER)?\.?/i) ||
+    undefined;
 
   // Payment method detection
   if(/\bmaya\b/i.test(text))       ex.method = 'MAYA';
