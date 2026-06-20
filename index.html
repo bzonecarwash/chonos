@@ -3019,6 +3019,55 @@ function openManualPicker(){
 }
 
 /* =====================================================================
+   BIR CROSS-FORM RULES — single source of truth
+   ─────────────────────────────────────────────────────────────────────
+   Some BIR form pairs cover the same tax type at different cadences. The
+   quarterly form supersedes the monthly form for that quarter's 3rd month.
+   These helpers centralize the rules so every code path that generates
+   or holds deadlines stays consistent.
+   ===================================================================== */
+
+// Months whose 0619E filing is rolled into the quarterly 1601EQ
+const BIR_0619E_SKIP_MONTHS = new Set(['March', 'June', 'September', 'December']);
+
+// Apply BIR cross-form rules to a candidate deadline list. Given the FULL set
+// of form codes the user is registered for, drop deadlines that would duplicate
+// a quarterly filing. Currently handles: 0619E ↔ 1601EQ.
+function applyBirCrossFormRules(formCode, deadlines, allFormCodes){
+  if(formCode === '0619E' && allFormCodes.has('1601EQ')){
+    return deadlines.filter(dl => !BIR_0619E_SKIP_MONTHS.has(dl.label));
+  }
+  // Future: same rule structure for 0619F ↔ 1601FQ (final withholding) if needed
+  return deadlines;
+}
+
+// One-time cleanup: scan existing state.deadlines and remove any 0619E entries
+// for months 3/6/9/12 that duplicate a 1601EQ filing already in the calendar.
+// Needed because earlier app versions didn't apply the cross-form rule when
+// generating deadlines, so users may have stale duplicates persisted in
+// localStorage from before the fix shipped.
+function cleanupBirCrossFormDuplicates(){
+  // Gather years in which 1601EQ deadlines exist
+  const yearsWithQuarterlyEW = new Set();
+  for(const d of state.deadlines){
+    const m = d.title.match(/^BIR\s+1601EQ\s+[—-]\s+\S+\s+(\d{4})/i);
+    if(m) yearsWithQuarterlyEW.add(parseInt(m[1], 10));
+  }
+  if(yearsWithQuarterlyEW.size === 0) return 0;
+
+  // Drop 0619E entries for skip-months in years where 1601EQ exists
+  const before = state.deadlines.length;
+  state.deadlines = state.deadlines.filter(d => {
+    const m = d.title.match(/^BIR\s+0619E\s+[—-]\s+(\w+)\s+(\d{4})/i);
+    if(!m) return true;  // keep non-0619E deadlines untouched
+    const month = m[1];
+    const year  = parseInt(m[2], 10);
+    return !(BIR_0619E_SKIP_MONTHS.has(month) && yearsWithQuarterlyEW.has(year));
+  });
+  return before - state.deadlines.length;
+}
+
+/* =====================================================================
    TYPE COR TABLE MANUALLY (5 columns of free-text, natural-language parse)
    ─────────────────────────────────────────────────────────────────────
    User types each of the 5 cert columns verbatim from their physical COR.
@@ -3170,16 +3219,13 @@ function getAdjustedDeadlinesForRow(rowState){
   }
 
   let adjustmentApplied = null;
-  // Rule: 0619E is skipped for months 3, 6, 9, 12 if 1601EQ is also registered
-  if(rowState.formCode === '0619E'){
-    const hasQuarterlyExp = typeCorState.rows.some(r => r.formCode === '1601EQ');
-    if(hasQuarterlyExp){
-      const skip = new Set(['March','June','September','December']);
-      const before = deadlines.length;
-      deadlines = deadlines.filter(d => !skip.has(d.label));
-      if(deadlines.length !== before){
-        adjustmentApplied = '0619E_skips_for_1601EQ';
-      }
+  // Apply BIR cross-form rules — drops 0619E months covered by 1601EQ, etc.
+  if(rowState.formCode){
+    const allFormCodes = new Set(typeCorState.rows.map(r => r.formCode).filter(Boolean));
+    const before = deadlines.length;
+    deadlines = applyBirCrossFormRules(rowState.formCode, deadlines, allFormCodes);
+    if(deadlines.length !== before){
+      adjustmentApplied = '0619E_skips_for_1601EQ';
     }
   }
 
@@ -3492,12 +3538,23 @@ function renderCorReview(){
   list.innerHTML = '';
 
   let totalDeadlines = 0;
+  // Set of form codes that are currently selected — used by the cross-form rule
+  // (e.g. so 0619E's count reflects March/June/Sept/Dec being rolled into 1601EQ)
+  const selectedFormCodes = new Set(
+    onboardingState.detected.filter(d => d.selected).map(d => d.code)
+  );
 
   onboardingState.detected.forEach((item, idx) => {
     const rule = BIR_FORM_RULES[item.code];
     if(!rule) return;
-    const deadlines = rule.generate(onboardingState.year);
+    const rawDeadlines = rule.generate(onboardingState.year);
+    const deadlines = applyBirCrossFormRules(item.code, rawDeadlines, selectedFormCodes);
     if(item.selected) totalDeadlines += deadlines.length;
+
+    // Note shown when this row's count was reduced by a cross-form rule
+    const adjustmentNote = (item.code === '0619E' && selectedFormCodes.has('1601EQ') && deadlines.length < rawDeadlines.length)
+      ? `<div class="form-detect-meta" style="color:var(--accent-violet);">💡 ${rawDeadlines.length - deadlines.length} months (Mar/Jun/Sep/Dec) skipped — reported via 1601EQ</div>`
+      : '';
 
     // Detect a frequency mismatch between what OCR read on the cert vs the
     // canonical rule for this form code. A mismatch is usually an OCR misread
@@ -3532,6 +3589,7 @@ function renderCorReview(){
         <div class="form-detect-name">${rule.name}</div>
         ${metaLine}
         ${dueCaptured}
+        ${adjustmentNote}
         <div class="form-detect-rule">${rule.rule}</div>
       </div>
       <div class="form-detect-count">
@@ -3552,11 +3610,16 @@ function renderCorReview(){
 // Generate deadlines from confirmed forms — merge into existing (no duplicates by title)
 document.getElementById('corGenerateBtn').addEventListener('click', () => {
   const existingTitles = new Set(state.deadlines.map(d => d.title));
+  const selectedForms = onboardingState.detected.filter(d => d.selected);
+  // Full set of form codes the user is generating for — used by BIR cross-form rules
+  const selectedFormCodes = new Set(selectedForms.map(f => f.code));
   let added = 0;
-  onboardingState.detected.filter(d => d.selected).forEach(item => {
+  selectedForms.forEach(item => {
     const rule = BIR_FORM_RULES[item.code];
     if(!rule) return;
-    const deadlines = rule.generate(onboardingState.year);
+    const rawDeadlines = rule.generate(onboardingState.year);
+    // Apply BIR cross-form rule (e.g. 0619E skips Mar/Jun/Sep/Dec when 1601EQ also picked)
+    const deadlines = applyBirCrossFormRules(item.code, rawDeadlines, selectedFormCodes);
     deadlines.forEach(dl => {
       const title = `BIR ${item.code} — ${dl.label} ${onboardingState.year} (${rule.name})`;
       if(existingTitles.has(title)) return;
@@ -3572,6 +3635,10 @@ document.getElementById('corGenerateBtn').addEventListener('click', () => {
       added++;
     });
   });
+  // Belt-and-suspenders: clean up any stale duplicates that might exist from
+  // earlier app versions before the cross-form rule was implemented.
+  const cleaned = cleanupBirCrossFormDuplicates();
+  if(cleaned > 0) console.log(`[BIR cleanup] removed ${cleaned} duplicate 0619E entries`);
 
   closeModal('corReviewModal');
   markOnboarded();
@@ -3636,6 +3703,19 @@ function loadState(){
     const t = localStorage.getItem(LS_KEY_TAXPAYER);
     if(d){ const arr = JSON.parse(d); if(Array.isArray(arr)) state.deadlines = arr; }
     if(t){ Object.assign(state.taxpayer, JSON.parse(t)); }
+    // Auto-cleanup: prior app versions created 0619E Mar/Jun/Sep/Dec entries even
+    // when 1601EQ was registered. Remove those duplicates on every load so the
+    // calendar always reflects the correct BIR rule.
+    const cleaned = cleanupBirCrossFormDuplicates();
+    if(cleaned > 0){
+      console.log(`[BIR cleanup] removed ${cleaned} duplicate 0619E deadlines (covered by 1601EQ)`);
+      // Persist the cleaned state immediately so the change sticks across sessions
+      try { localStorage.setItem(LS_KEY_DEADLINES, JSON.stringify(state.deadlines)); } catch(e){}
+      // Defer the toast until the UI is ready
+      setTimeout(() => {
+        toast(`✓ Calendar tidied: ${cleaned} duplicate 0619E entr${cleaned===1?'y':'ies'} removed (covered by 1601EQ)`);
+      }, 800);
+    }
     return localStorage.getItem(LS_KEY_ONBOARDED) === '1';
   } catch(e){
     console.warn('Load failed:', e);
