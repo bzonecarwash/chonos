@@ -1945,15 +1945,29 @@ function parseReceiptText(text){
   m = flat.match(/[\w.+\-]+@[\w-]+\.[A-Za-z]{2,}(?:\.[A-Za-z]{2,})?/);
   if(m) ex.email = m[0].toLowerCase();
 
-  // Receipt No. — matches GCash "Receipt No. Ym202605..." OR UnionBank "Reference Number UB1096521"
-  // (UnionBank prints its own transaction ID at the very top of the receipt, labeled "Reference Number")
+  // Receipt No. (bank-side transaction ID):
+  // - GCash:    "Receipt No. Ym202605..."
+  // - UnionBank:"Reference Number UB1096521" (at the very top of receipt)
+  // Maya is intentionally skipped here — Maya receipts show only ONE ref, labeled
+  // "Bill Reference Number", which is the BIR-side ref and belongs in refId below.
+  // The lookbehind on m.index makes sure "Reference Number" doesn't accidentally
+  // match the tail end of "Bill Reference Number".
   m = flat.match(/Receipt\s*No\.?[\s:]*([A-Za-z0-9]{10,})/i);
-  if(!m) m = flat.match(/Reference\s*Number[\s:]*([A-Z0-9]{6,})/i);
+  if(!m){
+    const refNumMatch = flat.match(/Reference\s*Number[\s:]*([A-Z0-9]{6,})/i);
+    if(refNumMatch && refNumMatch.index !== undefined){
+      const before = flat.substring(Math.max(0, refNumMatch.index - 10), refNumMatch.index);
+      if(!/Bills?\s*$/i.test(before)) m = refNumMatch;  // accept only if NOT preceded by "Bill"/"Bills"
+    }
+  }
   if(m) ex.receiptNo = m[1];
 
-  // Reference ID — matches Maya "Reference ID: 6131 1284 4434" OR
-  // UnionBank "BIR REF NO.: So20260610212306CB1781097786009" (BIR's own ref for the txn)
-  m = flat.match(/Reference\s*ID[\s:]*([\d\s]{8,})/i);
+  // Reference ID (BIR-side / sole transaction ref):
+  // - Maya:     "Bill Reference Number 6131000098765" ← the SOLE ref on Maya receipts
+  // - Maya old: "Reference ID: 6131 1284 4434"
+  // - UnionBank:"BIR REF NO.: So20260610212306CB1781097786009"
+  m = flat.match(/Bills?\s*Reference\s*(?:Number|No\.?)[\s:]*([A-Za-z0-9]{6,})/i);
+  if(!m) m = flat.match(/Reference\s*ID[\s:]*([\d\s]{8,})/i);
   if(m) ex.refId = m[1].replace(/\s+/g,' ').trim();
   if(!ex.refId){
     m = flat.match(/BIR\s*REF(?:ERENCE)?\s*(?:NO|NUMBER)?\.?[\s:]*([A-Za-z0-9]{15,})/i);
